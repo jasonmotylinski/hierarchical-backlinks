@@ -1,0 +1,10 @@
+{
+	"id": "hierarchical-backlinks",
+	"name": "Hierarchical Outgoing Links",
+	"version": "1.0.15",
+	"minAppVersion": "1.5.12",
+	"description": "Displays backlinks in a hierarchy",
+	"author": "Jason Motylinski",
+	"authorUrl": "https://jason.motylinski.com",
+	"isDesktopOnly": false
+}
