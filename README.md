@@ -1,4 +1,4 @@
-# Hierarchical Outgoing Links
+# Hierarchical Backlinks
 
 ## Overview
 Displays backlinks for the active document as a hierarchy based on the folder structure of the references.

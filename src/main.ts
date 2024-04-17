@@ -1,11 +1,11 @@
 import {  Plugin, WorkspaceLeaf } from 'obsidian';
-import {HierarchicalOutgoingLinksView, VIEW_TYPE} from "./view";
+import {HierarchicalBacklinksView, VIEW_TYPE} from "./view";
 
-export default class HierarchicalOutgoingLinksPlugin extends Plugin {
+export default class HierarchicalBacklinksPlugin extends Plugin {
 	async onload() {
 		this.registerView(
 			VIEW_TYPE,
-			(leaf) => new HierarchicalOutgoingLinksView(leaf, this)
+			(leaf) => new HierarchicalBacklinksView(leaf, this)
 		);
 
 		this.addCommand({

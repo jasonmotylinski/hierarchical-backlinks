@@ -1,14 +1,15 @@
 import { ItemView, WorkspaceLeaf, getIcon } from "obsidian";
-import HierarchicalOutgoingLinksPlugin  from "./main";
-import { TreeNode } from "./types";
+import { File } from "./file";
+import HierarchicalBacklinksPlugin  from "./main";
+import { ContentReference, TreeNode } from "./types";
 
 export const VIEW_TYPE="hierarchical-backlinks-view";
 
 
-export class HierarchicalOutgoingLinksView extends ItemView {
-    private plugin :HierarchicalOutgoingLinksPlugin;
+export class HierarchicalBacklinksView extends ItemView {
+    private plugin :HierarchicalBacklinksPlugin;
 
-    constructor(leaf: WorkspaceLeaf, plugin: HierarchicalOutgoingLinksPlugin){
+    constructor(leaf: WorkspaceLeaf, plugin: HierarchicalBacklinksPlugin){
         super(leaf);
         this.plugin=plugin;
     }
@@ -18,7 +19,7 @@ export class HierarchicalOutgoingLinksView extends ItemView {
     }
 
     getIcon(): string {
-        return "links-going-out";
+        return "links-coming-in";
     }
 
     getDisplayText(): string {
@@ -32,76 +33,81 @@ export class HierarchicalOutgoingLinksView extends ItemView {
         const activeFile=this.app.workspace.getActiveFile();
 
         if(activeFile){
-            const resolvedLinks=this.app.metadataCache.resolvedLinks[activeFile.path];
-            const unresolvedLinks=this.app.metadataCache.unresolvedLinks[activeFile.path];
-
-            const pane=container.createDiv({cls: "outgoing-link-pane"});
-            const resolvedHierarchy=this.create_hierarchy(resolvedLinks);
-            const unresolvedHierarchy=this.create_hierarchy(unresolvedLinks);
-            this.append_links(pane, "Links", resolvedHierarchy);
-            this.append_links(pane, "Unresolved links", unresolvedHierarchy);
+            const file=new File(this.app, activeFile);
+            const hierarchy=(await file.getBacklinksHierarchy());
+            this.createPane(container, hierarchy);
+           
         }
     }
 
-    append_links(pane :HTMLDivElement, headerText :string, links: any[]){
+    createPane(container :Element, hierarchy :TreeNode[]){
+        const pane=container.createDiv({cls: "backlink-pane"});
+        this.appendLinks(pane, "Linked mentions", hierarchy);
+    }
+
+    appendLinks(pane :HTMLDivElement, headerText :string, links: any[]){
         const linksHeader=pane.createDiv({cls: "tree-item-self is-clickable"});
         linksHeader.createEl("div",{text: headerText});
         pane.appendChild(linksHeader);
+
         const searchResultsContainer=pane.createDiv({cls: "search-result-container"});
         links.forEach((l) =>{
-            this.append_child(searchResultsContainer, l);
+            this.appendChild(searchResultsContainer, l);
         });
     }
 
-    append_child(parent :HTMLDivElement, item :TreeNode){
+    appendChild(parent :HTMLDivElement, item :TreeNode){
         const treeItem=parent.createDiv({cls: "tree-item"});
-        const treeItemSelf=treeItem.createDiv({cls: "tree-item-self is-clickable outgoing-link-item"});
+        const treeItemSelf=treeItem.createDiv({cls: "tree-item-self is-clickable backlink-item"});
+
+        const treeItemIcon=this.appendEndNode(treeItemSelf, item);
+
+        let text = "";
+
+        treeItemSelf.createDiv({cls:"tree-item-flair-outer"}).createEl("span",{cls: "tree-item-flair", text: text});
+        if(item.children.length > 0){
+            this.appendTreeItemChildren(treeItem, item.children);
+            
+        }else{
+            this.appendReferences(treeItem, item.references);
+        }
+
+        treeItemSelf.addEventListener("click", (e)=>{ 
+            // We are dealing with a branch node so collapse/uncollapse
+            this.toggleBranch(item, treeItem, treeItemSelf, treeItemIcon);
+        });
+    }
+
+    appendTreeItemChildren(treeItem:HTMLDivElement, children :TreeNode[]){
+        const treeItemChildren=treeItem.createDiv({cls: "tree-item-children"});
+        children.forEach((c)=>{ 
+            this.appendChild(treeItemChildren, c);
+        });
+    }
+
+    appendEndNode(treeItemSelf :HTMLDivElement, item :TreeNode){
         const treeItemIcon=treeItemSelf.createDiv({cls: "tree-item-icon collapse-icon"});
 
         let name = item.name;
-
         if(item.children && item.children.length == 0){
             const firstLink=this.app.metadataCache.getFirstLinkpathDest(item.name, '');
             
             if(firstLink){
                 name=firstLink.basename;
-                treeItemIcon.appendChild(getIcon("lucide-link")!);
-            }
-            else{
-                treeItemIcon.appendChild(getIcon("lucide-file-plus")!);
             }
         }
-        const firstLink=this.app.metadataCache.getFirstLinkpathDest(item.name, '');
-        const treeItemInner=treeItemSelf.createDiv({cls: "tree-item-inner", text: name});
 
-        if(item.children.length > 0){
-            treeItemIcon.appendChild(getIcon("right-triangle")!);
-        }
+        treeItemSelf.createDiv({cls: "tree-item-inner", text: name});
+        treeItemIcon.appendChild(getIcon("right-triangle")!);
+        return treeItemIcon;
+    }
 
-        let text = "";
-
-        if(item.children.length == 0){
-            text=item.count.toString();
-        }
-        const treeItemFlairOuter=treeItemSelf.createDiv({cls:"tree-item-flair-outer"}).createEl("span",{cls: "tree-item-flair", text: text});
-        const treeItemChildren=treeItem.createDiv({cls: "tree-item-children"});
-        if(item.children.length > 0){
-            item.children.forEach((c)=>{ 
-                this.append_child(treeItemChildren, c);
-            });
-        }
-
-        treeItemSelf.addEventListener("click", (e)=>{ 
-            if(item.children.length==0){
-                // We are dealing with a leaf node so navigate to the leaf reference
-                this.navigateTo(item.name);
-            }else{
-                // We are dealing with a branch node so collapse/uncollapse
-                this.toggleBranch(item, treeItem, treeItemSelf, treeItemIcon);
-               
-            }
+    appendReferences(parent:HTMLDivElement, references :ContentReference[]){
+        const matchesDiv=parent.createDiv({cls: 'search-result-file-matches'})
+        references.forEach((r)=>{
+            matchesDiv.createDiv({cls: "search-result-file-match", text: r.exerpt});
         });
-    };
+    }
 
     navigateTo(name :string){
         const firstLink=this.app.metadataCache.getFirstLinkpathDest(name, '');
@@ -120,28 +126,15 @@ export class HierarchicalOutgoingLinksView extends ItemView {
         else{
             const treeItemChildren=treeItem.createDiv({cls: "tree-item-children"});
             if(item.children.length > 0){
-                item.children.forEach((c)=>{ 
-                    this.append_child(treeItemChildren, c);
-                });
+                this.appendTreeItemChildren(treeItemChildren, item.children);
+                
+            }else{
+                this.appendReferences(treeItemChildren, item.references);
             }
+    
         }
     }
 
-    create_hierarchy(paths :{ [key: string]: number }){
-        let result :any[] = [];
-        let level = {result};
-        for(const path in paths){
-            path.split('/').reduce((r :any, name :string, i, a) => {
-              if(!r[name]) {
-                r[name] = {result: []};
-                r.result.push({name, count: paths[path],children: r[name].result})
-              }
-              
-              return r[name];
-            }, level)
-          }
-        return result;
-    }
 
     register_events(){
         this.plugin.registerEvent(this.app.metadataCache.on("changed", () => {

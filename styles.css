@@ -10,6 +10,6 @@ If your plugin does not need CSS, delete this file.
     padding: 0px;
 }
 
-.workspace-leaf-content[data-type='hierarchical-backlinks-view'] .view-content .outgoing-link-item {
+.workspace-leaf-content[data-type='hierarchical-backlinks-view'] .view-content .backllink-item {
     padding-left: 24px;
 }

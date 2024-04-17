@@ -1,4 +1,4 @@
-name: Release Hierarchical Outgoing Links plugin
+name: Release Hierarchical Backlinks plugin
 
 on:
   push:
