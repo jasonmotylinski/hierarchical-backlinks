@@ -30,9 +30,6 @@ export class File {
                     }
                     r.result.push(item);
                 }
-
-
-    
                 return r[name];
             }, level);
             }
@@ -40,18 +37,20 @@ export class File {
     
     }
 
-    async getReferences(path :string, positions){
+    async getReferences(path :string, positions :any){
         const references:ContentReference[]=[];
         const file = this.app.vault.getFileByPath(path);
         if(file){
             const cached=this.app.vault.cachedRead(file);
             const contents=(await cached);
-            const lines=contents.split("\n");
-            
+            const reference=<ContentReference>({contents: contents, ranges:[]});
+
             positions.forEach((r) => {
-                references.push({exerpt: lines[r.position.start.line]});
+                reference.ranges.push(r.position);
             });
+            references.push(reference);
         }
+  
         return references;
     }
 }

@@ -1,7 +1,7 @@
 import { ItemView, WorkspaceLeaf, getIcon } from "obsidian";
 import { File } from "./file";
 import HierarchicalBacklinksPlugin  from "./main";
-import { ContentReference, TreeNode } from "./types";
+import { ContentReference, Point, Position, TreeNode } from "./types";
 
 export const VIEW_TYPE="hierarchical-backlinks-view";
 
@@ -105,7 +105,9 @@ export class HierarchicalBacklinksView extends ItemView {
     appendReferences(parent:HTMLDivElement, references :ContentReference[]){
         const matchesDiv=parent.createDiv({cls: 'search-result-file-matches'})
         references.forEach((r)=>{
-            matchesDiv.createDiv({cls: "search-result-file-match", text: r.exerpt});
+            
+            const matchDiv=matchesDiv.createDiv({cls: "search-result-file-match"});
+            this.highlightMatches(matchDiv, r.contents, 50, 60, r.ranges)
         });
     }
 
@@ -135,6 +137,51 @@ export class HierarchicalBacklinksView extends ItemView {
         }
     }
 
+    highlightMatches(
+        e: any, 
+        fullText: string, 
+        startIndex: number, 
+        endIndex: number, 
+        ranges: Position[]
+    ): void {
+        // Anonymous function processing ranges
+        (function(lowerBound: number, upperBound: number, rangeArray: Position[], callback: (isMatch: boolean, from: number, to: number) => void) {
+            let currentPos = lowerBound;
+            for (let i = 0; i < rangeArray.length; i++) {
+                let range = rangeArray[i];
+                let rangeStart = range[0];
+
+                if (rangeStart >= upperBound) break;
+
+                let rangeEnd = range[1];
+
+                if (rangeEnd < lowerBound) continue;
+
+                if (rangeStart < lowerBound) rangeStart = lowerBound;
+                if (rangeEnd > upperBound) rangeEnd = upperBound;
+
+                if (rangeStart > currentPos) callback(false, currentPos, rangeStart);
+                callback(true, rangeStart, rangeEnd);
+
+                currentPos = rangeEnd;
+            }
+
+            if (currentPos < upperBound) callback(false, currentPos, upperBound);
+
+        })(startIndex, endIndex, ranges, function(isMatch: boolean, from: number, to: number): void {
+            const textSegment = fullText.substring(from, to);
+            if (isMatch) {
+                e.createSpan({
+                    cls: "search-result-file-matched-text",
+                    text: textSegment
+                });
+            } else {
+                e.createSpan({
+                    text: textSegment
+                });
+            }
+        });
+    }
 
     register_events(){
         this.plugin.registerEvent(this.app.metadataCache.on("changed", () => {

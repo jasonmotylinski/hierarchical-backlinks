@@ -5,6 +5,17 @@ export interface TreeNode {
     references: ContentReference[];
 }
 
+export interface Point {
+    line: number,
+    col: number,
+    offset: number,
+}
+export interface Position {
+    start: Point,
+    end: Point
+}
+
 export interface ContentReference {
-    exerpt: string;
+    ranges: Position[];
+    contents: string;
 }
