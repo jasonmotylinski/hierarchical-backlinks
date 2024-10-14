@@ -1,3 +1,5 @@
+import { SearchMatches } from "obsidian";
+
 export interface TreeNode {
     name: string;
     count: number;
@@ -16,6 +18,6 @@ export interface Position {
 }
 
 export interface ContentReference {
-    ranges: Position[];
+    searchMatches: SearchMatches;
     contents: string;
 }

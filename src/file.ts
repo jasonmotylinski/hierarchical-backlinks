@@ -1,4 +1,4 @@
-import { App, TFile } from "obsidian";
+import { App, TFile, SearchMatchPart } from "obsidian";
 import { ContentReference } from "./types";
 
 export class File {
@@ -9,7 +9,6 @@ export class File {
     }
     getBacklinks(){
         return this.app.metadataCache.getBacklinksForFile(this.app.workspace.getActiveFile());
-
     }
 
     async getBacklinksHierarchy(){
@@ -34,19 +33,19 @@ export class File {
             }, level);
             }
         return result;
-    
     }
 
-    async getReferences(path :string, positions :any){
+    async getReferences(path :string, positions){
         const references:ContentReference[]=[];
         const file = this.app.vault.getFileByPath(path);
         if(file){
             const cached=this.app.vault.cachedRead(file);
             const contents=(await cached);
-            const reference=<ContentReference>({contents: contents, ranges:[]});
+            const reference=<ContentReference>({contents: contents, searchMatches:[]});
 
-            positions.forEach((r) => {
-                reference.ranges.push(r.position);
+            positions.forEach((p) => {
+                const searchMatchPart: SearchMatchPart = [p.position.start.offset, p.position.end.offset];
+                reference.searchMatches.push(searchMatchPart);
             });
             references.push(reference);
         }
