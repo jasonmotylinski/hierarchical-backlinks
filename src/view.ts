@@ -1,8 +1,7 @@
-import { ItemView, WorkspaceLeaf, getIcon } from "obsidian";
+import { ItemView, WorkspaceLeaf } from "obsidian";
 import { File } from "./file";
 import HierarchicalBacklinksPlugin  from "./main";
-import { ContentReference, TreeNode } from "./types";
-import { SearchResultFileMatchView } from "./searchResultFileMatchView";
+import { TreeNode } from "./types";
 import { TreeNodeView } from "./treeNodeView";
 
 export const VIEW_TYPE="hierarchical-backlinks-view";
@@ -29,7 +28,6 @@ export class HierarchicalBacklinksView extends ItemView {
     }
 
     async initialize(){
-
         const container=this.containerEl.children[1];
         container.empty();
         const activeFile=this.app.workspace.getActiveFile();
@@ -42,6 +40,7 @@ export class HierarchicalBacklinksView extends ItemView {
     }
 
     createPane(container :Element, hierarchy :TreeNode[]){
+		
         const pane=container.createDiv({cls: "backlink-pane"});
         this.appendLinks(pane, "Linked mentions", hierarchy);
     }
@@ -58,14 +57,6 @@ export class HierarchicalBacklinksView extends ItemView {
         });
     }
 
-    navigateTo(name :string){
-        const firstLink=this.app.metadataCache.getFirstLinkpathDest(name, '');
-            
-        if(firstLink){
-            this.app.workspace.openLinkText(firstLink.name, firstLink.path);
-        }
-    }
-
     register_events(){
         this.plugin.registerEvent(this.app.metadataCache.on("changed", () => {
             this.initialize();
@@ -75,9 +66,6 @@ export class HierarchicalBacklinksView extends ItemView {
             this.initialize();
         }));
 
-        this.plugin.registerEvent(this.app.workspace.on("active-leaf-change", () => {
-            this.initialize();
-        }));
     }
 
     async onOpen(){

@@ -20,4 +20,5 @@ export interface Position {
 
 export interface ContentReference {
     searchMatches: SearchMatches;
+	path: string;
 }

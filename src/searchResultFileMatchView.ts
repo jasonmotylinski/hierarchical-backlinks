@@ -1,20 +1,28 @@
-import { SearchMatchPart } from "obsidian";
+import { App, SearchMatchPart } from "obsidian";
 
 import { ContentReference } from "./types";
 
 export class SearchResultFileMatchView {
-
+    private app: App;
     private parent: HTMLDivElement;
     private content: string;
     private references: ContentReference[];
 
-    constructor(parent: HTMLDivElement,  content: string, references :ContentReference[]) {
+    constructor(app: App, parent: HTMLDivElement,  content: string, references :ContentReference[]) {
+        this.app=app;
         this.parent=parent;
         this.content=content;
         this.references=references;
     }
     render(){
         const matchesDiv=this.parent.createDiv({cls: 'search-result-file-matches'});
+        matchesDiv.addEventListener('click', (e) => {
+            const firstLink=this.app.metadataCache.getFirstLinkpathDest(this.references[0].path, '');
+    
+            if(firstLink){
+                this.app.workspace.openLinkText(firstLink.name, firstLink.path);
+            }
+        });
 
         this.references.forEach((r)=>{
             const sorted=r.searchMatches.sort((m)=>m[0]);
@@ -33,7 +41,6 @@ export class SearchResultFileMatchView {
                 const matchDiv=matchesDiv.createDiv({cls: "search-result-file-match"});
                 this.highlightMatches(matchDiv, this.content, currentBoundary[0], currentBoundary[1], matchesInLine);
                 matchesInLine=[];
-
             }
         });
 

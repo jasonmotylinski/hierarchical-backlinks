@@ -42,7 +42,7 @@ export class File {
 
     async getReferences(path :string, positions: Position[]){
         const references:ContentReference[]=[];
-        const reference=<ContentReference>({searchMatches:[]});
+        const reference=<ContentReference>({path:path, searchMatches:[]});
 
         positions.forEach((p) => {
             const searchMatchPart: SearchMatchPart = [p.position.start.offset, p.position.end.offset];

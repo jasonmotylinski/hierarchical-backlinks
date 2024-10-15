@@ -58,7 +58,7 @@ export class TreeNodeView {
     }
 
 	appendReferences(parent:HTMLDivElement, item: TreeNode, references :ContentReference[]){
-        const searchResultFileMatchView= new SearchResultFileMatchView(parent, item.content, references);
+        const searchResultFileMatchView= new SearchResultFileMatchView(this.app, parent, item.content, references);
 		searchResultFileMatchView.render();
     }
 
