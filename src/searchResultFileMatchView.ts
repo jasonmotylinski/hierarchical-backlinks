@@ -88,8 +88,8 @@ export class SearchResultFileMatchView {
     highlightMatches(
         e: any, 
         fullText: string, 
-        startIndex: number | boolean, 
-        endIndex: number | boolean, 
+        startIndex: number, 
+        endIndex: number, 
         ranges: SearchMatchPart[]
     ): void {
         // Anonymous function processing ranges
