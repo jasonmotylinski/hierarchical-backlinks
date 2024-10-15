@@ -1,8 +1,9 @@
-import { ItemView, SearchMatchPart, WorkspaceLeaf, getIcon } from "obsidian";
+import { ItemView, WorkspaceLeaf, getIcon } from "obsidian";
 import { File } from "./file";
 import HierarchicalBacklinksPlugin  from "./main";
 import { ContentReference, TreeNode } from "./types";
 import { SearchResultFileMatchView } from "./searchResultFileMatchView";
+import { TreeNodeView } from "./treeNodeView";
 
 export const VIEW_TYPE="hierarchical-backlinks-view";
 
@@ -37,7 +38,6 @@ export class HierarchicalBacklinksView extends ItemView {
             const file=new File(this.app, activeFile);
             const hierarchy=(await file.getBacklinksHierarchy());
             this.createPane(container, hierarchy);
-           
         }
     }
 
@@ -53,59 +53,9 @@ export class HierarchicalBacklinksView extends ItemView {
 
         const searchResultsContainer=pane.createDiv({cls: "search-result-container"});
         links.forEach((l) =>{
-            this.appendChild(searchResultsContainer, l);
+			const treeNodeView=new TreeNodeView(this.app);
+			treeNodeView.render(searchResultsContainer, l);
         });
-    }
-
-    appendChild(parent :HTMLDivElement, item :TreeNode){
-        const treeItem=parent.createDiv({cls: "tree-item"});
-        const treeItemSelf=treeItem.createDiv({cls: "tree-item-self is-clickable backlink-item"});
-
-        const treeItemIcon=this.appendEndNode(treeItemSelf, item);
-
-        const text = "";
-
-        treeItemSelf.createDiv({cls:"tree-item-flair-outer"}).createEl("span",{cls: "tree-item-flair", text: text});
-        if(item.children.length > 0){
-            this.appendTreeItemChildren(treeItem, item.children);
-            
-        }else{
-            this.appendReferences(treeItem, item, item.references);
-        }
-
-        treeItemSelf.addEventListener("click", (e)=>{ 
-            // We are dealing with a branch node so collapse/uncollapse
-            this.toggleBranch(item, treeItem, treeItemSelf, treeItemIcon);
-        });
-    }
-
-    appendTreeItemChildren(treeItem:HTMLDivElement, children :TreeNode[]){
-        const treeItemChildren=treeItem.createDiv({cls: "tree-item-children"});
-        children.forEach((c)=>{ 
-            this.appendChild(treeItemChildren, c);
-        });
-    }
-
-    appendEndNode(treeItemSelf :HTMLDivElement, item :TreeNode){
-        const treeItemIcon=treeItemSelf.createDiv({cls: "tree-item-icon collapse-icon"});
-
-        let name = item.name;
-        if(item.children && item.children.length == 0){
-            const firstLink=this.app.metadataCache.getFirstLinkpathDest(item.name, '');
-            
-            if(firstLink){
-                name=firstLink.basename;
-            }
-        }
-
-        treeItemSelf.createDiv({cls: "tree-item-inner", text: name});
-        treeItemIcon.appendChild(getIcon("right-triangle")!);
-        return treeItemIcon;
-    }
-
-    appendReferences(parent:HTMLDivElement, item: TreeNode, references :ContentReference[]){
-        const searchResultFileMatchView= new SearchResultFileMatchView(parent, item.content, references);
-		searchResultFileMatchView.render();
     }
 
     navigateTo(name :string){
@@ -113,24 +63,6 @@ export class HierarchicalBacklinksView extends ItemView {
             
         if(firstLink){
             this.app.workspace.openLinkText(firstLink.name, firstLink.path);
-        }
-    }
-
-    toggleBranch(item :TreeNode, treeItem: HTMLDivElement, treeItemSelf :HTMLDivElement, treeItemIcon :HTMLDivElement){
-        treeItemSelf.toggleClass("is-collapsed", !treeItemSelf.hasClass("is-collapsed"));
-        treeItemIcon.toggleClass("is-collapsed", !treeItemIcon.hasClass("is-collapsed"));
-        if(treeItemSelf.hasClass("is-collapsed")){
-            treeItemSelf.nextSibling!.remove();
-        }
-        else{
-            const treeItemChildren=treeItem.createDiv({cls: "tree-item-children"});
-            if(item.children.length > 0){
-                this.appendTreeItemChildren(treeItemChildren, item.children);
-                
-            }else{
-                this.appendReferences(treeItemChildren, item, item.references);
-            }
-    
         }
     }
 

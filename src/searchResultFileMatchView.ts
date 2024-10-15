@@ -5,18 +5,18 @@ import { ContentReference } from "./types";
 export class SearchResultFileMatchView {
 
     private parent: HTMLDivElement;
-	private content: string;
-	private references: ContentReference[];
+    private content: string;
+    private references: ContentReference[];
 
     constructor(parent: HTMLDivElement,  content: string, references :ContentReference[]) {
         this.parent=parent;
-		this.content=content;
-		this.references=references;
+        this.content=content;
+        this.references=references;
     }
     render(){
         const matchesDiv=this.parent.createDiv({cls: 'search-result-file-matches'});
 
-		this.references.forEach((r)=>{
+        this.references.forEach((r)=>{
             const sorted=r.searchMatches.sort((m)=>m[0]);
             let matchesInLine: SearchMatchPart[]=[];
 
@@ -39,7 +39,7 @@ export class SearchResultFileMatchView {
 
     }
 
-	findLineBoundaries(text: string, indices: [number, number], maxDistance: number | undefined) {
+    findLineBoundaries(text: string, indices: [number, number], maxDistance: number | undefined) {
         // Set a default value for maxDistance if it's not provided
         if (maxDistance === undefined) maxDistance = 100;
     
