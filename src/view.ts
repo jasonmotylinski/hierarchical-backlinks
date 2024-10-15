@@ -40,7 +40,7 @@ export class HierarchicalBacklinksView extends ItemView {
     }
 
     createPane(container :Element, hierarchy :TreeNode[]){
-		
+        
         const pane=container.createDiv({cls: "backlink-pane"});
         this.appendLinks(pane, "Linked mentions", hierarchy);
     }
@@ -51,10 +51,15 @@ export class HierarchicalBacklinksView extends ItemView {
         pane.appendChild(linksHeader);
 
         const searchResultsContainer=pane.createDiv({cls: "search-result-container"});
-        links.forEach((l) =>{
-			const treeNodeView=new TreeNodeView(this.app);
-			treeNodeView.render(searchResultsContainer, l);
-        });
+
+        if(links.length==0){
+            searchResultsContainer.createDiv({cls: "search-empty-state", text: "No backlinks found."})
+        }else{
+            links.forEach((l) =>{
+                const treeNodeView=new TreeNodeView(this.app);
+                treeNodeView.render(searchResultsContainer, l);
+            });
+        }
     }
 
     register_events(){
