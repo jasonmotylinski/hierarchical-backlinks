@@ -1,7 +1,8 @@
-import { ItemView, WorkspaceLeaf, getIcon } from "obsidian";
+import { ItemView, WorkspaceLeaf } from "obsidian";
 import { File } from "./file";
 import HierarchicalBacklinksPlugin  from "./main";
-import { ContentReference, TreeNode } from "./types";
+import { TreeNode } from "./types";
+import { TreeNodeView } from "./treeNodeView";
 
 export const VIEW_TYPE="hierarchical-backlinks-view";
 
@@ -27,7 +28,6 @@ export class HierarchicalBacklinksView extends ItemView {
     }
 
     async initialize(){
-
         const container=this.containerEl.children[1];
         container.empty();
         const activeFile=this.app.workspace.getActiveFile();
@@ -36,11 +36,11 @@ export class HierarchicalBacklinksView extends ItemView {
             const file=new File(this.app, activeFile);
             const hierarchy=(await file.getBacklinksHierarchy());
             this.createPane(container, hierarchy);
-           
         }
     }
 
     createPane(container :Element, hierarchy :TreeNode[]){
+        
         const pane=container.createDiv({cls: "backlink-pane"});
         this.appendLinks(pane, "Linked mentions", hierarchy);
     }
@@ -51,90 +51,16 @@ export class HierarchicalBacklinksView extends ItemView {
         pane.appendChild(linksHeader);
 
         const searchResultsContainer=pane.createDiv({cls: "search-result-container"});
-        links.forEach((l) =>{
-            this.appendChild(searchResultsContainer, l);
-        });
-    }
 
-    appendChild(parent :HTMLDivElement, item :TreeNode){
-        const treeItem=parent.createDiv({cls: "tree-item"});
-        const treeItemSelf=treeItem.createDiv({cls: "tree-item-self is-clickable backlink-item"});
-
-        const treeItemIcon=this.appendEndNode(treeItemSelf, item);
-
-        let text = "";
-
-        treeItemSelf.createDiv({cls:"tree-item-flair-outer"}).createEl("span",{cls: "tree-item-flair", text: text});
-        if(item.children.length > 0){
-            this.appendTreeItemChildren(treeItem, item.children);
-            
+        if(links.length==0){
+            searchResultsContainer.createDiv({cls: "search-empty-state", text: "No backlinks found."})
         }else{
-            this.appendReferences(treeItem, item.references);
-        }
-
-        treeItemSelf.addEventListener("click", (e)=>{ 
-            // We are dealing with a branch node so collapse/uncollapse
-            this.toggleBranch(item, treeItem, treeItemSelf, treeItemIcon);
-        });
-    }
-
-    appendTreeItemChildren(treeItem:HTMLDivElement, children :TreeNode[]){
-        const treeItemChildren=treeItem.createDiv({cls: "tree-item-children"});
-        children.forEach((c)=>{ 
-            this.appendChild(treeItemChildren, c);
-        });
-    }
-
-    appendEndNode(treeItemSelf :HTMLDivElement, item :TreeNode){
-        const treeItemIcon=treeItemSelf.createDiv({cls: "tree-item-icon collapse-icon"});
-
-        let name = item.name;
-        if(item.children && item.children.length == 0){
-            const firstLink=this.app.metadataCache.getFirstLinkpathDest(item.name, '');
-            
-            if(firstLink){
-                name=firstLink.basename;
-            }
-        }
-
-        treeItemSelf.createDiv({cls: "tree-item-inner", text: name});
-        treeItemIcon.appendChild(getIcon("right-triangle")!);
-        return treeItemIcon;
-    }
-
-    appendReferences(parent:HTMLDivElement, references :ContentReference[]){
-        const matchesDiv=parent.createDiv({cls: 'search-result-file-matches'})
-        references.forEach((r)=>{
-            matchesDiv.createDiv({cls: "search-result-file-match", text: r.exerpt});
-        });
-    }
-
-    navigateTo(name :string){
-        const firstLink=this.app.metadataCache.getFirstLinkpathDest(name, '');
-            
-        if(firstLink){
-            this.app.workspace.openLinkText(firstLink.name, firstLink.path);
+            links.forEach((l) =>{
+                const treeNodeView=new TreeNodeView(this.app);
+                treeNodeView.render(searchResultsContainer, l);
+            });
         }
     }
-
-    toggleBranch(item :TreeNode, treeItem: HTMLDivElement, treeItemSelf :HTMLDivElement, treeItemIcon :HTMLDivElement){
-        treeItemSelf.toggleClass("is-collapsed", !treeItemSelf.hasClass("is-collapsed"));
-        treeItemIcon.toggleClass("is-collapsed", !treeItemIcon.hasClass("is-collapsed"));
-        if(treeItemSelf.hasClass("is-collapsed")){
-            treeItemSelf.nextSibling!.remove();
-        }
-        else{
-            const treeItemChildren=treeItem.createDiv({cls: "tree-item-children"});
-            if(item.children.length > 0){
-                this.appendTreeItemChildren(treeItemChildren, item.children);
-                
-            }else{
-                this.appendReferences(treeItemChildren, item.references);
-            }
-    
-        }
-    }
-
 
     register_events(){
         this.plugin.registerEvent(this.app.metadataCache.on("changed", () => {
@@ -145,9 +71,6 @@ export class HierarchicalBacklinksView extends ItemView {
             this.initialize();
         }));
 
-        this.plugin.registerEvent(this.app.workspace.on("active-leaf-change", () => {
-            this.initialize();
-        }));
     }
 
     async onOpen(){
