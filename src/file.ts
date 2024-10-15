@@ -1,5 +1,5 @@
 import { App, TFile, SearchMatchPart } from "obsidian";
-import { ContentReference, Position } from "./types";
+import { BacklinkReference, ContentReference } from "./types";
 
 export class File {
     app :App;
@@ -8,7 +8,8 @@ export class File {
         this.app=app;
     }
     getBacklinks(){
-        return this.app.metadataCache.getBacklinksForFile(this.app.workspace.getActiveFile());
+		// @ts-ignore - getBacklinksForFile is available in the JS API, not TS for some reason. Function does exist on MetadataCache 
+        return this.app.metadataCache.getBacklinksForFile(this.app.workspace.getActiveFile()); 
     }
 
     async getBacklinksHierarchy(){
@@ -16,13 +17,13 @@ export class File {
         const result :any[] = [];
         const level = {result};
         const backlinks=this.getBacklinks();
-        for (const [path, positions] of Object.entries(backlinks.data)) {
+        for (const [path, backlinkReferences] of Object.entries(backlinks.data)) {
             const parts=path.split('/');
             const file = this.app.vault.getFileByPath(path);
             if(file){
                 const cached=this.app.vault.cachedRead(file);
                 const content=(await cached);
-                const references=(await this.getReferences(path, positions));
+                const references=(await this.getReferences(path, (backlinkReferences as BacklinkReference[])));
                 parts.reduce((r :any, name :string, i, a) => {
                     if(!r[name]) {
                         r[name] = {result: []};
@@ -40,11 +41,11 @@ export class File {
         return result;
     }
 
-    async getReferences(path :string, positions: Position[]){
+    async getReferences(path :string, backlinkReferences: BacklinkReference[]){
         const references:ContentReference[]=[];
         const reference=<ContentReference>({path:path, searchMatches:[]});
 
-        positions.forEach((p) => {
+        backlinkReferences.forEach((p) => {
             const searchMatchPart: SearchMatchPart = [p.position.start.offset, p.position.end.offset];
             reference.searchMatches.push(searchMatchPart);
         });

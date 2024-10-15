@@ -13,12 +13,18 @@ export interface Point {
     col: number,
     offset: number,
 }
+
 export interface Position {
     start: Point,
     end: Point
+}
+
+export interface BacklinkReference{
+	position: Position
 }
 
 export interface ContentReference {
     searchMatches: SearchMatches;
 	path: string;
 }
+

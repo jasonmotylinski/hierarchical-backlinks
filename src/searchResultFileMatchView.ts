@@ -96,7 +96,7 @@ export class SearchResultFileMatchView {
         (function(lowerBound: number, upperBound: number, rangeArray: SearchMatchPart[], callback: (isMatch: boolean, from: number, to: number) => void) {
             let currentPos = lowerBound;
             for (let i = 0; i < rangeArray.length; i++) {
-                let range = rangeArray[i];
+                const range = rangeArray[i];
                 let rangeStart = range[0];
 
                 if (rangeStart >= upperBound) break;
