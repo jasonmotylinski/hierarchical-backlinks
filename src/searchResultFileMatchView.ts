@@ -39,7 +39,7 @@ export class SearchResultFileMatchView {
                 }
 
                 const matchDiv=matchesDiv.createDiv({cls: "search-result-file-match"});
-                this.highlightMatches(matchDiv, this.content, currentBoundary[0], currentBoundary[1], matchesInLine);
+                this.highlightMatches(matchDiv, this.content, (currentBoundary[0] as number), (currentBoundary[1] as number), matchesInLine);
                 matchesInLine=[];
             }
         });
