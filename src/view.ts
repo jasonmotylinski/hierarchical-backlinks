@@ -63,7 +63,7 @@ export class HierarchicalBacklinksView extends ItemView {
 
         const treeItemIcon=this.appendEndNode(treeItemSelf, item);
 
-        let text = "";
+        const text = "";
 
         treeItemSelf.createDiv({cls:"tree-item-flair-outer"}).createEl("span",{cls: "tree-item-flair", text: text});
         if(item.children.length > 0){
@@ -128,7 +128,7 @@ export class HierarchicalBacklinksView extends ItemView {
                 this.appendTreeItemChildren(treeItemChildren, item.children);
                 
             }else{
-                this.appendReferences(treeItemChildren, item.references);
+                this.appendReferences(treeItemChildren, item, item.references);
             }
     
         }
