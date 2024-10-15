@@ -1,7 +1,7 @@
-import { ItemView, SearchMatchPart, WorkspaceLeaf, getIcon, renderMatches } from "obsidian";
+import { ItemView, SearchMatchPart, WorkspaceLeaf, getIcon } from "obsidian";
 import { File } from "./file";
 import HierarchicalBacklinksPlugin  from "./main";
-import { ContentReference, Point, Position, TreeNode } from "./types";
+import { ContentReference, TreeNode } from "./types";
 
 export const VIEW_TYPE="hierarchical-backlinks-view";
 
@@ -69,7 +69,7 @@ export class HierarchicalBacklinksView extends ItemView {
             this.appendTreeItemChildren(treeItem, item.children);
             
         }else{
-            this.appendReferences(treeItem, item.references);
+            this.appendReferences(treeItem, item, item.references);
         }
 
         treeItemSelf.addEventListener("click", (e)=>{ 
@@ -102,16 +102,28 @@ export class HierarchicalBacklinksView extends ItemView {
         return treeItemIcon;
     }
 
-    appendReferences(parent:HTMLDivElement, references :ContentReference[]){
-        const matchesDiv=parent.createDiv({cls: 'search-result-file-matches'})
-        references.forEach((r)=>{
-            
-            r.searchMatches.forEach((m) => {
-                const matchDiv=matchesDiv.createDiv({cls: "search-result-file-match"});
+    appendReferences(parent:HTMLDivElement, item: TreeNode, references :ContentReference[]){
+        const matchesDiv=parent.createDiv({cls: 'search-result-file-matches'});
 
-                const p=this.findLineBoundaries(r.contents, m);
-                this.highlightMatches(matchDiv, r.contents,p[0],p[1], [m]);
-            });
+        references.forEach((r)=>{
+			const sorted=r.searchMatches.sort((m)=>m[0]);
+			let matchesInLine: SearchMatchPart[]=[];
+
+			for(let i=0; i < sorted.length; i++){
+				
+				const currentBoundary=this.findLineBoundaries(item.content, sorted[i]);
+				matchesInLine.push(sorted[i]);
+
+				if(i+1 < sorted.length){
+					const nextBoundary=this.findLineBoundaries(item.content, sorted[i+1]);
+					if(currentBoundary[0]==nextBoundary[0] && currentBoundary[1]==nextBoundary[1]) continue;
+				}
+
+				const matchDiv=matchesDiv.createDiv({cls: "search-result-file-match"});
+				this.highlightMatches(matchDiv, item.content, currentBoundary[0], currentBoundary[1], matchesInLine);
+				matchesInLine=[];
+
+			}
         });
     }
 
