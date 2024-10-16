@@ -25,7 +25,7 @@ export class File {
                 const cached=this.app.vault.cachedRead(file);
                 const content=(await cached);
                 const references=(await this.getReferences(path, (backlinkReferences as BacklinkReference[])));
-                parts.reduce((r :any, name :string, i, a) => {
+                parts.reduce((r :any, name :string, i :any, a :any) => {
                     if(!r[name]) {
                         r[name] = {result: []};
                         const refs: ContentReference[] = [];
