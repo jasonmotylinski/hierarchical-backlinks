@@ -71,6 +71,10 @@ export class HierarchicalBacklinksView extends ItemView {
             this.initialize();
         }));
 
+		this.plugin.registerEvent(this.app.workspace.on("file-open", () => {
+           this.initialize();
+        }));
+
     }
 
     async onOpen(){

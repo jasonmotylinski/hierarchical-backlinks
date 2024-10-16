@@ -28,8 +28,7 @@ export class TreeNodeView {
 
         treeItemSelf.addEventListener("click", (e)=>{ 
             // We are dealing with a branch node so collapse/uncollapse
-
-            this.toggleBranch(treeNode, treeItem, treeItemSelf, treeItemIcon);
+			this.toggleBranch(treeNode, treeItem, treeItemSelf, treeItemIcon);
         });
 	}
 

@@ -16,7 +16,7 @@ export class SearchResultFileMatchView {
     }
     render(){
         const matchesDiv=this.parent.createDiv({cls: 'search-result-file-matches'});
-        matchesDiv.addEventListener('click', (e) => {
+        this.parent.addEventListener('click', (e) => {
             const firstLink=this.app.metadataCache.getFirstLinkpathDest(this.references[0].path, '');
     
             if(firstLink){
