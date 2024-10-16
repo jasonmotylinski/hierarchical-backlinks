@@ -1,8 +1,8 @@
 {
 	"id": "hierarchical-backlinks",
 	"name": "Hierarchical Backlinks",
-	"version": "1.0.0",
-	"minAppVersion": "1.5.12",
+	"version": "1.0.1",
+	"minAppVersion": "1.7.4",
 	"description": "Displays backlinks in a hierarchy",
 	"author": "Jason Motylinski",
 	"authorUrl": "https://jason.motylinski.com",

@@ -17,7 +17,8 @@ export class File {
         const result :any[] = [];
         const level = {result};
         const backlinks=this.getBacklinks();
-        for (const [path, backlinkReferences] of Object.entries(backlinks.data)) {
+
+        for (const [path, backlinkReferences] of backlinks.data.entries()) {
             const parts=path.split('/');
             const file = this.app.vault.getFileByPath(path);
             if(file){
