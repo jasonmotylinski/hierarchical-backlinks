@@ -8,7 +8,7 @@ export class File {
         this.app=app;
     }
     getBacklinks(){
-		// @ts-ignore - getBacklinksForFile is available in the JS API, not TS for some reason. Function does exist on MetadataCache 
+        // @ts-ignore - getBacklinksForFile is available in the JS API, not TS for some reason. Function does exist on MetadataCache 
         return this.app.metadataCache.getBacklinksForFile(this.app.workspace.getActiveFile()); 
     }
 
@@ -47,8 +47,10 @@ export class File {
         const reference=<ContentReference>({path:path, searchMatches:[]});
 
         backlinkReferences.forEach((p) => {
-            const searchMatchPart: SearchMatchPart = [p.position.start.offset, p.position.end.offset];
-            reference.searchMatches.push(searchMatchPart);
+            if(p.position){
+                const searchMatchPart: SearchMatchPart = [p.position.start.offset, p.position.end.offset];
+                reference.searchMatches.push(searchMatchPart);
+            }
         });
         references.push(reference);
         
