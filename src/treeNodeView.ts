@@ -66,6 +66,7 @@ export class TreeNodeView{
         children.forEach((c)=>{ 
             const treeNodeView=new TreeNodeView(this.app, treeItemChildren, c);
             treeNodeView.render();
+            this.treeNodeViewChildren.push(treeNodeView);
         });
 
     }
@@ -90,15 +91,20 @@ export class TreeNodeView{
             const nextDiv = this.treeItemSelf.nextSibling as HTMLDivElement;
             nextDiv.style.display="block";
         }
+
+        this.treeNodeViewChildren.forEach((c)=>{c.toggleOn()});
     }
     
     toggleOff(){
         this.treeItemSelf.toggleClass("is-collapsed", true);
         this.treeItemIcon.toggleClass("is-collapsed", true);
+
         if(this.treeItemSelf.nextSibling){
             const nextDiv = this.treeItemSelf.nextSibling as HTMLDivElement;
             nextDiv.style.display="none";
         }
+
+        this.treeNodeViewChildren.forEach((c)=>{c.toggleOff()});
     }
 
 	toggle(){
