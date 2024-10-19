@@ -3,13 +3,14 @@ import { File } from "./file";
 import HierarchicalBacklinksPlugin  from "./main";
 import { TreeNode } from "./types";
 import { TreeNodeView } from "./treeNodeView";
+import { NavButtonsView } from "./nav/navButtonsView";
 
 export const VIEW_TYPE="hierarchical-backlinks-view";
 
 
 export class HierarchicalBacklinksView extends ItemView {
     private plugin :HierarchicalBacklinksPlugin;
-
+    private treeNodeViews: TreeNodeView[]=[];
     constructor(leaf: WorkspaceLeaf, plugin: HierarchicalBacklinksPlugin){
         super(leaf);
         this.plugin=plugin;
@@ -41,11 +42,26 @@ export class HierarchicalBacklinksView extends ItemView {
 
     createPane(container :Element, hierarchy :TreeNode[]){
         
+        const navButtonsView=new NavButtonsView(this.app, container);
+        navButtonsView.render();
+
+        navButtonsView.collapseButton.on("collapse-click", (e)=> {
+            if(navButtonsView.collapseButton.isCollapsed()){
+                this.treeNodeViews.forEach((n)=>{
+                    n.toggleOff();
+                });
+            }else{
+                this.treeNodeViews.forEach((n)=>{
+                    n.toggleOn();
+                });
+            }
+        });
+
         const pane=container.createDiv({cls: "backlink-pane"});
-        this.appendLinks(pane, "Linked mentions", hierarchy);
+        this.appendLinks(pane, navButtonsView,"Linked mentions", hierarchy);
     }
 
-    appendLinks(pane :HTMLDivElement, headerText :string, links: any[]){
+    appendLinks(pane :HTMLDivElement, navButtonsView: NavButtonsView,headerText :string, links: any[]){
         const linksHeader=pane.createDiv({cls: "tree-item-self is-clickable"});
         linksHeader.createEl("div",{text: headerText});
         pane.appendChild(linksHeader);
@@ -56,8 +72,9 @@ export class HierarchicalBacklinksView extends ItemView {
             searchResultsContainer.createDiv({cls: "search-empty-state", text: "No backlinks found."})
         }else{
             links.forEach((l) =>{
-                const treeNodeView=new TreeNodeView(this.app);
-                treeNodeView.render(searchResultsContainer, l);
+                const treeNodeView=new TreeNodeView(this.app,searchResultsContainer, l);
+                treeNodeView.render();
+                this.treeNodeViews.push(treeNodeView);
             });
         }
     }
