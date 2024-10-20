@@ -3,7 +3,7 @@ import { SearchResultFileMatchView } from "./searchResultFileMatchView";
 import { ContentReference, TreeNode } from "./types";
 
 export class TreeNodeView{
-	private app: App;
+    private app: App;
     private isCollapsed: boolean;
     private parent: HTMLDivElement;
     private treeItem: HTMLDivElement;
@@ -12,15 +12,15 @@ export class TreeNodeView{
     private treeNode: TreeNode;
     private treeNodeViewChildren: TreeNodeView[];
     constructor(app: App, parent: HTMLDivElement, treeNode: TreeNode) {
-		this.app=app;
+        this.app=app;
         this.isCollapsed=false;
         this.parent=parent;
         this.treeNode=treeNode;
         this.treeNodeViewChildren=[];
-	}
+    }
 
-	render(){
-		this.treeItem=this.parent.createDiv({cls: "tree-item"});
+    render(){
+        this.treeItem=this.parent.createDiv({cls: "tree-item"});
         this.treeItemSelf=this.treeItem.createDiv({cls: "tree-item-self is-clickable backlink-item"});
 
         this.appendEndNode(this.treeItemSelf, this.treeNode);
@@ -30,15 +30,15 @@ export class TreeNodeView{
             this.appendTreeItemChildren(this.treeItem, this.treeNode.children);
             
         }else{
-			const total=this.treeNode.references.reduce((accumulator: number,curr)=>{
-				return accumulator+=curr.searchMatches.length;
-			}, 0);
-			treeItemFlair.setText(total.toString());
+            const total=this.treeNode.references.reduce((accumulator: number,curr)=>{
+                return accumulator+=curr.searchMatches.length;
+            }, 0);
+            treeItemFlair.setText(total.toString());
             this.appendReferences(this.treeItem, this.treeNode, this.treeNode.references);
         }
-	}
+    }
 
-	appendEndNode(parent :HTMLDivElement, treeNode :TreeNode){
+    appendEndNode(parent :HTMLDivElement, treeNode :TreeNode){
         this.treeItemIcon=parent.createDiv({cls: "tree-item-icon collapse-icon"});
 
         let name = treeNode.name;
@@ -61,7 +61,7 @@ export class TreeNodeView{
         });
     }
 
-	appendTreeItemChildren(treeItem:HTMLDivElement, children :TreeNode[]){
+    appendTreeItemChildren(treeItem:HTMLDivElement, children :TreeNode[]){
         const treeItemChildren=treeItem.createDiv({cls: "tree-item-children"});
         children.forEach((c)=>{ 
             const treeNodeView=new TreeNodeView(this.app, treeItemChildren, c);
@@ -79,9 +79,9 @@ export class TreeNodeView{
         }
     }
 
-	appendReferences(parent:HTMLDivElement, item: TreeNode, references :ContentReference[]){
+    appendReferences(parent:HTMLDivElement, item: TreeNode, references :ContentReference[]){
         const searchResultFileMatchView=new SearchResultFileMatchView(this.app, parent, item.content, references);
-		searchResultFileMatchView.render();
+        searchResultFileMatchView.render();
     }
 
     toggleOn(){
@@ -107,7 +107,7 @@ export class TreeNodeView{
         this.treeNodeViewChildren.forEach((c)=>{c.toggleOff()});
     }
 
-	toggle(){
+    toggle(){
         if(this.isCollapsed){
             this.isCollapsed=false;
             this.toggleOff();
