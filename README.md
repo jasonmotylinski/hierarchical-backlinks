@@ -39,3 +39,5 @@ npm install
 ```bash
 npm run dev
 ```
+
+<a href="https://www.buymeacoffee.com/jasonmotylinski" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-yellow.png" alt="Buy Me A Coffee"></a>
