@@ -14,8 +14,10 @@ export default class HierarchicalBacklinksPlugin extends Plugin {
             callback: () => {
               this.activateView();
             },
-          });
-
+        });
+    }
+    
+    async onUserEnable(){
         this.activateView();
     }
 

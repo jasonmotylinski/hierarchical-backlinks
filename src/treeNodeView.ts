@@ -1,4 +1,4 @@
-import { App, getIcon } from "obsidian";
+import { App, setIcon } from "obsidian";
 import { SearchResultFileMatchView } from "./searchResultFileMatchView";
 import { ContentReference, TreeNode } from "./types";
 
@@ -51,7 +51,7 @@ export class TreeNodeView{
         }
 
         const treeItemInner=parent.createDiv({cls: "tree-item-inner", text: name});
-        this.treeItemIcon.appendChild(getIcon("right-triangle")!);
+        setIcon(this.treeItemIcon, 'right-triangle');
 
         this.treeItemIcon.addEventListener("click", (e)=> {
             this.toggle();
