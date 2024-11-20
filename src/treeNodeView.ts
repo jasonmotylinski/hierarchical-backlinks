@@ -31,7 +31,7 @@ export class TreeNodeView{
             
         }else{
             const total=this.treeNode.references.reduce((accumulator: number,curr)=>{
-                return accumulator+=curr.searchMatches.length;
+                return accumulator+=curr.content.length + curr.properties.length;
             }, 0);
             treeItemFlair.setText(total.toString());
             this.appendReferences(this.treeItem, this.treeNode, this.treeNode.references);

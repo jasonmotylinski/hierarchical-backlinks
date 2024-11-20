@@ -20,11 +20,21 @@ export interface Position {
 }
 
 export interface BacklinkReference{
-	position: Position
+	position: Position;
+	key: string;
+	original: string;
+}
+
+export interface PropertyMatch{
+	key: string;
+	original: string;
+	subkey: (string | number)[];
+	pos: [number, number]
 }
 
 export interface ContentReference {
-    searchMatches: SearchMatches;
+    content: SearchMatches;
+	properties: PropertyMatch [];
 	path: string;
 }
 
