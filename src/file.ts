@@ -3,15 +3,19 @@ import { BacklinkReference, ContentReference } from "./types";
 
 export class File {
     app :App;
+	file: TFile;
 
     constructor(app :App, file :TFile){
         this.app=app;
-    }
-    getBacklinks(){
-        // @ts-ignore - getBacklinksForFile is available in the JS API, not TS for some reason. Function does exist on MetadataCache 
-        return this.app.metadataCache.getBacklinksForFile(this.app.workspace.getActiveFile()); 
+		this.file=file;
     }
 
+     
+    getBacklinks(){
+        // @ts-ignore - getBacklinksForFile is available in the JS API, not TS for some reason. Function does exist on MetadataCache 
+        return this.app.metadataCache.getBacklinksForFile(this.file); 
+    }
+    
     async getBacklinksHierarchy(){
 
         const result :any[] = [];
@@ -44,12 +48,36 @@ export class File {
 
     async getReferences(path :string, backlinkReferences: BacklinkReference[]){
         const references:ContentReference[]=[];
-        const reference=<ContentReference>({path:path, searchMatches:[]});
+        const reference=<ContentReference>({path:path, content:[], properties:[]});
 
         backlinkReferences.forEach((p) => {
             if(p.position){
+				// match exists in content of file
                 const searchMatchPart: SearchMatchPart = [p.position.start.offset, p.position.end.offset];
-                reference.searchMatches.push(searchMatchPart);
+                reference.content.push(searchMatchPart);
+            }
+            else{
+				// match exists in frontmatter
+                const parts = p.key.split(".");
+                const key = parts[0];
+                const y = parts.slice(1);
+                var b = [];
+
+                if (y) {
+                    b = [];
+                    for (var w = 0, k = y; w < k.length; w++) {
+                        var C = k[w]
+                            , M = Number(C);
+                        b.push(Number.isNaN(M) ? C : M)
+                    }
+                }
+                reference.properties.push({
+                    key: key,
+                    subkey: b,
+					original: p.original,
+                    pos: [0, p.original.length]
+                })
+                
             }
         });
         references.push(reference);

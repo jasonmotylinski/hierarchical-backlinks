@@ -25,10 +25,30 @@ export class SearchResultFileMatchView {
         });
 
         this.references.forEach((r)=>{
-            const sorted=r.searchMatches.sort((m)=>m[0]);
+            const sorted=r.content.sort((m)=>m[0]);
             let matchesInLine: SearchMatchPart[]=[];
 
-            for(let i=0; i < sorted.length; i++){
+           
+
+			for(let i=0; i < r.properties.length; i++){
+				const frontmatterContent = r.properties[i].key.trim() + ": " + r.properties[i].original.trim();
+
+				const currentBoundary=this.findLineBoundaries(frontmatterContent,  r.properties[i].pos, undefined);
+				const start=r.properties[i].pos[0] + r.properties[i].key.length + 2;
+				const end=r.properties[i].pos[1] + r.properties[i].key.length + 2;
+				matchesInLine.push([start, end]);
+
+				if(i+1 < r.properties.length){
+                    const nextBoundary=this.findLineBoundaries(frontmatterContent, r.properties[i+1].pos, undefined);
+                    if(currentBoundary[0]==nextBoundary[0] && currentBoundary[1]==nextBoundary[1]) continue;
+                }
+
+				const matchDiv=matchesDiv.createDiv({cls: "search-result-file-match"});
+                this.highlightMatches(matchDiv, frontmatterContent, (currentBoundary[0] as number), (currentBoundary[1] as number), matchesInLine);
+                matchesInLine=[];
+			}
+
+			for(let i=0; i < sorted.length; i++){
                 
                 const currentBoundary=this.findLineBoundaries(this.content, sorted[i], undefined);
                 matchesInLine.push(sorted[i]);

@@ -5,7 +5,7 @@ import { TreeNode } from "./types";
 import { TreeNodeView } from "./treeNodeView";
 import { NavButtonsView } from "./nav/navButtonsView";
 
-export const VIEW_TYPE="hierarchical-backlinks-view";
+export const VIEW_TYPE="hierarchical-backlinks";
 
 
 export class HierarchicalBacklinksView extends ItemView {
