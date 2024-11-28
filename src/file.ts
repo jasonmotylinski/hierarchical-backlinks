@@ -13,7 +13,9 @@ export class File {
      
     getBacklinks(){
         // @ts-ignore - getBacklinksForFile is available in the JS API, not TS for some reason. Function does exist on MetadataCache 
-        return this.app.metadataCache.getBacklinksForFile(this.file); 
+        const backlinks = this.app.metadataCache.getBacklinksForFile(this.file); 
+        backlinks.data.delete(this.file.path);
+        return backlinks;
     }
     
     async getBacklinksHierarchy(){
