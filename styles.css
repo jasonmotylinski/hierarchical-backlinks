@@ -13,3 +13,6 @@ If your plugin does not need CSS, delete this file.
 .workspace-leaf-content[data-type='hierarchical-backlinks-view'] .view-content .backllink-item {
     padding-left: 24px;
 }
+.view-content {
+    padding: 0px !important;
+}
