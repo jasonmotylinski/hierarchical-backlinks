@@ -12,6 +12,7 @@ export class TreeNodeView{
     private treeItemIcon: HTMLDivElement;
     private treeNode: TreeNode;
     private treeNodeViewChildren: TreeNodeView[];
+    private hasUserToggled: boolean = false;
     constructor(app: App, parent: HTMLDivElement, treeNode: TreeNode) {
         this.app=app;
         this.isCollapsed=false;
@@ -55,6 +56,7 @@ export class TreeNodeView{
         setIcon(this.treeItemIcon, 'right-triangle');
 
         this.treeItemIcon.addEventListener("click", (e)=> {
+            this.hasUserToggled = true;
             this.toggle();
         });
         treeItemInner.addEventListener("click", (e)=>{ 
@@ -134,14 +136,14 @@ export class TreeNodeView{
     }
 
     contentHiddenToggleOff() {
+        this.hasUserToggled = false;
         const matchBlock = this.treeItem.querySelector(".search-result-file-matches") as HTMLElement | null;
         const childrenContainer = this.treeItem.querySelector(".tree-item-children") as HTMLElement | null;
 
         // Only operate if this tree item is visible (its parent is not collapsed)
         if (this.treeItem.offsetParent === null) return;
 
-        if (this.isLeaf()) {
-            this.isCollapsed = false;
+        if (this.isLeaf() && !this.hasUserToggled) {
             this.treeItemSelf.removeClass("is-collapsed");
             this.treeItemIcon.removeClass("is-collapsed");
             if (matchBlock) {
@@ -161,11 +163,12 @@ export class TreeNodeView{
     }
     
     contentHiddenToggleOn() {
+        this.hasUserToggled = false;
         const matchBlock = this.treeItem.querySelector(".search-result-file-matches") as HTMLElement | null;
         const childrenContainer = this.treeItem.querySelector(".tree-item-children");
         const isLeaf = this.isLeaf();
 
-        if (isLeaf) {
+        if (isLeaf && !this.hasUserToggled) {
             if (matchBlock) matchBlock.style.display = "none";
             this.treeItemSelf.addClass("is-collapsed");
             this.treeItemIcon.addClass("is-collapsed");
@@ -173,7 +176,7 @@ export class TreeNodeView{
             this.treeNodeViewChildren.forEach(child => child.contentHiddenToggleOn());
 
             const allChildrenCollapsed = this.treeNodeViewChildren.length > 0 &&
-                this.treeNodeViewChildren.every(child => child.isLeaf() && child.isCollapsed);
+                this.treeNodeViewChildren.every(child => child.isLeaf());
 
             if (allChildrenCollapsed) {
                 this.treeItemSelf.addClass("is-collapsed");
@@ -196,6 +199,7 @@ export class TreeNodeView{
         const childrenContainer = this.treeItem.querySelector(".tree-item-children");
 
         console.debug("[Toggle] isCollapsed (before toggle):", this.isCollapsed);
+        this.hasUserToggled = true;
         this.isCollapsed = !this.isCollapsed;
 
         this.treeItemSelf.toggleClass("is-collapsed", this.isCollapsed);
@@ -206,10 +210,12 @@ export class TreeNodeView{
         console.debug("[Toggle] isCollapsed (after toggle):", this.isCollapsed);
 
         if (matchBlock) {
-          // Respect local toggle override (manual triangle click) over global contentHidden
+          // Only show matchBlock when node is a leaf or contentHidden is false
           if (!this.isCollapsed) {
-            matchBlock.style.display = "block";
-            matchBlock.removeClass("is-hidden");
+            if (this.isLeaf() || !TreeNodeView.contentHidden) {
+              matchBlock.style.display = "block";
+              matchBlock.removeClass("is-hidden");
+            }
           } else {
             matchBlock.style.display = "none";
             matchBlock.addClass("is-hidden");
@@ -219,6 +225,11 @@ export class TreeNodeView{
         if (childrenContainer) {
           (childrenContainer as HTMLElement).style.display = this.isCollapsed ? "none" : "block";
         }
+    }
+
+    resetUserToggles() {
+        this.hasUserToggled = false;
+        this.treeNodeViewChildren.forEach(child => child.resetUserToggles());
     }
 
 }
