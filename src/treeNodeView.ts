@@ -100,18 +100,44 @@ export class TreeNodeView{
             (childrenContainer as HTMLElement).style.display = "block";
             this.treeNodeViewChildren.forEach(child => child.toggleOn());
         }
+        console.debug("ON");
     }
     
     toggleOff() {
         const matchBlock = this.treeItem.querySelector(".search-result-file-matches") as HTMLElement | null;
         const childrenContainer = this.treeItem.querySelector(".tree-item-children");
-      
+
         const isLeaf = !childrenContainer || childrenContainer.querySelectorAll(":scope > .tree-item").length === 0;
-      
-        if (isLeaf && matchBlock) {
-          matchBlock.style.display = "none";
+
+        if (isLeaf) {
+            if (matchBlock) {
+                matchBlock.style.display = "none";
+            }
+            this.treeItemSelf.addClass("is-collapsed");
+            this.treeItemIcon.addClass("is-collapsed");
+        } else if (childrenContainer) {
+            this.treeNodeViewChildren.forEach(child => {
+                child.toggleOff();
+            });
+            // Do not forcibly expand non-leaf nodes: do not set childrenContainer.style.display = "block" here.
+            // Only collapse icon if all direct children are leaf nodes AND are currently collapsed
+            if (
+                this.treeNodeViewChildren.length > 0 &&
+                this.treeNodeViewChildren.every(child => child.isLeaf() && child.isCollapsed)
+            ) {
+                this.treeItemSelf.addClass("is-collapsed");
+                this.treeItemIcon.addClass("is-collapsed");
+            }
+            // Otherwise, do not remove is-collapsed classes or alter collapsed state.
         }
-      }
+
+        console.debug("OFF");
+    }
+
+    isLeaf(): boolean {
+        const childrenContainer = this.treeItem.querySelector(".tree-item-children");
+        return !childrenContainer || childrenContainer.querySelectorAll(":scope > .tree-item").length === 0;
+    }
 
     toggle() {
         const matchBlock = this.treeItem.querySelector(".search-result-file-matches") as HTMLElement | null;
