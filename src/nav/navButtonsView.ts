@@ -1,10 +1,12 @@
 import { App } from "obsidian";
-import { CollapseButton } from "./collapseButton";
+import { ContentCollapseButton, TotalCollapseButton } from "./collapseButtons";
 
 export class NavButtonsView {
     private app;
     private parent;
-    public collapseButton: CollapseButton;
+    public contentCollapseButton: ContentCollapseButton;
+    public totalCollapseButton: TotalCollapseButton;
+
     constructor(app: App, parent: Element) {
         this.app=app;
         this.parent=parent;
@@ -13,8 +15,10 @@ export class NavButtonsView {
     render(){
         const navButtonsContainer=this.parent.createDiv({cls:"nav-header"})
                                              .createDiv({cls: "nav-buttons-container"});
-        this.collapseButton=new CollapseButton(this.app, navButtonsContainer);
-        this.collapseButton.render();
         
+        this.totalCollapseButton = new TotalCollapseButton(this.app, navButtonsContainer);
+        this.totalCollapseButton.render();
+        this.contentCollapseButton=new ContentCollapseButton(this.app, navButtonsContainer);
+        this.contentCollapseButton.render();
     }
 }

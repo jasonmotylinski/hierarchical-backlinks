@@ -84,7 +84,30 @@ export class TreeNodeView{
         searchResultFileMatchView.render();
     }
 
-    toggleOn() {
+    totalToggleOn(){
+        this.treeItemSelf.toggleClass("is-collapsed", false);
+        this.treeItemIcon.toggleClass("is-collapsed", false);
+        if(this.treeItemSelf.nextSibling){
+            const nextDiv = this.treeItemSelf.nextSibling as HTMLDivElement;
+            nextDiv.style.display="block";
+        }
+
+        this.treeNodeViewChildren.forEach((c)=>{c.totalToggleOn()});
+    }
+    
+    totalToggleOff(){
+        this.treeItemSelf.toggleClass("is-collapsed", true);
+        this.treeItemIcon.toggleClass("is-collapsed", true);
+
+        if(this.treeItemSelf.nextSibling){
+            const nextDiv = this.treeItemSelf.nextSibling as HTMLDivElement;
+            nextDiv.style.display="none";
+        }
+
+        this.treeNodeViewChildren.forEach((c)=>{c.totalToggleOff()});
+    }
+
+    contentToggleOn() {
         const matchBlock = this.treeItem.querySelector(".search-result-file-matches") as HTMLElement | null;
         const childrenContainer = this.treeItem.querySelector(".tree-item-children");
 
@@ -99,12 +122,12 @@ export class TreeNodeView{
         }
         if (childrenContainer) {
             (childrenContainer as HTMLElement).style.display = "block";
-            this.treeNodeViewChildren.forEach(child => child.toggleOn());
+            this.treeNodeViewChildren.forEach(child => child.contentToggleOn());
         }
         console.debug("ON");
     }
     
-    toggleOff() {
+    contentToggleOff() {
         const matchBlock = this.treeItem.querySelector(".search-result-file-matches") as HTMLElement | null;
         const childrenContainer = this.treeItem.querySelector(".tree-item-children");
 
@@ -118,7 +141,7 @@ export class TreeNodeView{
             this.treeItemIcon.addClass("is-collapsed");
         } else if (childrenContainer) {
             this.treeNodeViewChildren.forEach(child => {
-                child.toggleOff();
+                child.contentToggleOff();
             });
             // Do not forcibly expand non-leaf nodes: do not set childrenContainer.style.display = "block" here.
             // Only collapse icon if all direct children are leaf nodes AND are currently collapsed
