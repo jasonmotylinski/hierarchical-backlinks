@@ -84,37 +84,50 @@ export class TreeNodeView{
         searchResultFileMatchView.render();
     }
 
-    toggleOn(){
-        this.treeItemSelf.toggleClass("is-collapsed", false);
-        this.treeItemIcon.toggleClass("is-collapsed", false);
-        if(this.treeItemSelf.nextSibling){
-            const nextDiv = this.treeItemSelf.nextSibling as HTMLDivElement;
-            nextDiv.style.display="block";
-        }
+    toggleOn() {
+        const matchBlock = this.treeItem.querySelector(".search-result-file-matches") as HTMLElement | null;
+        const childrenContainer = this.treeItem.querySelector(".tree-item-children");
 
-        this.treeNodeViewChildren.forEach((c)=>{c.toggleOn()});
+        this.isCollapsed = false;
+
+        this.treeItemSelf.removeClass("is-collapsed");
+        this.treeItemIcon.removeClass("is-collapsed");
+
+        if (matchBlock) {
+            matchBlock.style.display = "block";
+        }
+        if (childrenContainer) {
+            (childrenContainer as HTMLElement).style.display = "block";
+            this.treeNodeViewChildren.forEach(child => child.toggleOn());
+        }
     }
     
-    toggleOff(){
-        this.treeItemSelf.toggleClass("is-collapsed", true);
-        this.treeItemIcon.toggleClass("is-collapsed", true);
-
-        if(this.treeItemSelf.nextSibling){
-            const nextDiv = this.treeItemSelf.nextSibling as HTMLDivElement;
-            nextDiv.style.display="none";
+    toggleOff() {
+        const matchBlock = this.treeItem.querySelector(".search-result-file-matches") as HTMLElement | null;
+        const childrenContainer = this.treeItem.querySelector(".tree-item-children");
+      
+        const isLeaf = !childrenContainer || childrenContainer.querySelectorAll(":scope > .tree-item").length === 0;
+      
+        if (isLeaf && matchBlock) {
+          matchBlock.style.display = "none";
         }
+      }
 
-        this.treeNodeViewChildren.forEach((c)=>{c.toggleOff()});
-    }
-
-    toggle(){
-        if(this.isCollapsed){
-            this.isCollapsed=false;
-            this.toggleOff();
-        }else{
-            this.isCollapsed=true;
-            this.toggleOn();
+    toggle() {
+        const matchBlock = this.treeItem.querySelector(".search-result-file-matches") as HTMLElement | null;
+        const childrenContainer = this.treeItem.querySelector(".tree-item-children");
+      
+        this.isCollapsed = !this.isCollapsed;
+      
+        this.treeItemSelf.toggleClass("is-collapsed", this.isCollapsed);
+        this.treeItemIcon.toggleClass("is-collapsed", this.isCollapsed);
+      
+        if (matchBlock) {
+          matchBlock.style.display = this.isCollapsed ? "none" : "block";
         }
-    }
+        if (childrenContainer) {
+          (childrenContainer as HTMLElement).style.display = this.isCollapsed ? "none" : "block";
+        }
+      }
 
 }

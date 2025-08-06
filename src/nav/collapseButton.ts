@@ -1,28 +1,36 @@
 import { App, setIcon } from "obsidian";
 import { EventEmitter } from "events";
+import { collapseLeafMatchBlocks } from "utils/collapseUtils";
 
-export class CollapseButton extends EventEmitter  {
-    private app: App;
-    private parent: Element;
-    private button :HTMLDivElement;
-    constructor(app: App, parent: Element) {
-        super();
-        this.app=app;
-        this.parent=parent;
-    }
+export class CollapseButton extends EventEmitter {
+  private button: HTMLDivElement;
 
-    render(){
-        this.button=this.parent.createDiv({cls: "clickable-icon nav-action-button"});
-        setIcon( this.button, 'list');
+  constructor(private app: App, private parent: HTMLElement) {
+    super();
+  }
 
-        this.button.addEventListener("click", (e)=>{ 
-            this.button.classList.toggle('is-active');
-            this.emit("collapse-click", e);
-        });
-    }
+  render() {
+    this.button = this.parent.createDiv({ cls: "clickable-icon nav-action-button" });
+    setIcon(this.button, "list");
 
-    isCollapsed(): boolean{
-        return this.button.hasClass("is-active");
-    }
-   
+    this.button.addEventListener("click", (e) => {
+      console.debug("[CollapseButton] Clicked collapse button");
+      this.button.classList.toggle("is-active");
+
+      const root = this.parent.closest(".workspace-leaf")?.querySelector(".backlink-pane") as HTMLElement;
+      console.debug("[CollapseButton] Scanning from root container:", root);
+
+      if (root) {
+        collapseLeafMatchBlocks(root);
+      } else {
+        console.warn("[CollapseButton] Could not find .backlink-pane");
+      }
+
+      this.emit("collapse-click", e);
+    });
+  }
+
+  isCollapsed(): boolean {
+    return this.button.hasClass("is-active");
+  }
 }
