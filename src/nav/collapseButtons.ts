@@ -37,7 +37,7 @@ export class ContentCollapseButton extends EventEmitter {
 
   render() {
     this.button = this.parent.createDiv({ cls: "clickable-icon nav-action-button" });
-    setIcon(this.button, "leaf");
+    setIcon(this.button, "file-minus");
 
     this.button.addEventListener("click", (e) => {
       console.debug("[CollapseButton] Clicked collapse button");
