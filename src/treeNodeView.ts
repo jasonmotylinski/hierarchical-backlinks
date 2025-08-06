@@ -95,6 +95,7 @@ export class TreeNodeView{
 
         if (matchBlock) {
             matchBlock.style.display = "block";
+            matchBlock.removeClass("is-hidden");
         }
         if (childrenContainer) {
             (childrenContainer as HTMLElement).style.display = "block";
@@ -143,14 +144,21 @@ export class TreeNodeView{
         const matchBlock = this.treeItem.querySelector(".search-result-file-matches") as HTMLElement | null;
         const childrenContainer = this.treeItem.querySelector(".tree-item-children");
       
+        console.debug("[Toggle] isCollapsed (before toggle):", this.isCollapsed);
         this.isCollapsed = !this.isCollapsed;
       
         this.treeItemSelf.toggleClass("is-collapsed", this.isCollapsed);
         this.treeItemIcon.toggleClass("is-collapsed", this.isCollapsed);
+        console.debug("[Toggle] isLeaf:", this.isLeaf());
+        console.debug("[Toggle] matchBlock:", matchBlock);
+        console.debug("[Toggle] childrenContainer:", childrenContainer);
+        console.debug("[Toggle] isCollapsed (after toggle):", this.isCollapsed);
       
         if (matchBlock) {
           matchBlock.style.display = this.isCollapsed ? "none" : "block";
+          matchBlock.toggleClass("is-hidden", this.isCollapsed); // ✅ explicitly sync class
         }
+      
         if (childrenContainer) {
           (childrenContainer as HTMLElement).style.display = this.isCollapsed ? "none" : "block";
         }
