@@ -5,7 +5,7 @@ import { ContentReference, TreeNode } from "./types";
 export class TreeNodeView{
     private app: App;
     private isCollapsed: boolean;
-    private contentHidden: boolean = true;
+    private static contentHidden: boolean = true;
     private parent: HTMLDivElement;
     private treeItem: HTMLDivElement;
     private treeItemSelf: HTMLDivElement;
@@ -87,29 +87,24 @@ export class TreeNodeView{
 
     listToggleOff() {
         console.debug("LIST TOGGLE OFF START");
-        this.treeItemSelf.toggleClass("is-collapsed", false);
-        this.treeItemIcon.toggleClass("is-collapsed", false);
+
+        this.treeItemSelf.removeClass("is-collapsed");
+        this.treeItemIcon.removeClass("is-collapsed");
 
         const childrenContainer = this.treeItem.querySelector(".tree-item-children") as HTMLElement | null;
         if (childrenContainer) {
             childrenContainer.style.display = "block";
         }
 
-        if (!this.contentHidden) {
-            const matchBlock = this.treeItem.querySelector(".search-result-file-matches") as HTMLElement | null;
-            if (matchBlock) {
-                matchBlock.style.display = "block";
-                matchBlock.removeClass("is-hidden");
-            }
+        const matchBlock = this.treeItem.querySelector(".search-result-file-matches") as HTMLElement | null;
+        if (matchBlock && !TreeNodeView.contentHidden) {
+            matchBlock.style.display = "block";
+            matchBlock.removeClass("is-hidden");
         }
 
-        this.treeNodeViewChildren.forEach((c) => {
-            c.listToggleOff();
-        });
+        this.treeNodeViewChildren.forEach(child => child.listToggleOff());
 
-        // If leaf content is hidden, leaf icons should still appear collapsed
-        if (this.contentHidden && this.isLeaf()) {
-            //this.treeItemSelf.addClass("is-collapsed");
+        if (TreeNodeView.contentHidden && this.isLeaf()) {
             this.treeItemIcon.addClass("is-collapsed");
         }
 
@@ -140,7 +135,7 @@ export class TreeNodeView{
 
     contentHiddenToggleOff() {
         const matchBlock = this.treeItem.querySelector(".search-result-file-matches") as HTMLElement | null;
-        const childrenContainer = this.treeItem.querySelector(".tree-item-children");
+        const childrenContainer = this.treeItem.querySelector(".tree-item-children") as HTMLElement | null;
 
         // Only operate if this tree item is visible (its parent is not collapsed)
         if (this.treeItem.offsetParent === null) return;
@@ -149,54 +144,46 @@ export class TreeNodeView{
             this.isCollapsed = false;
             this.treeItemSelf.removeClass("is-collapsed");
             this.treeItemIcon.removeClass("is-collapsed");
-
             if (matchBlock) {
                 matchBlock.style.display = "block";
                 matchBlock.removeClass("is-hidden");
             }
         }
 
-        // Only process children if this node is already expanded (i.e., visible)
-        if (childrenContainer && (childrenContainer as HTMLElement).offsetParent !== null) {
-            (childrenContainer as HTMLElement).style.display = "block";
+        if (childrenContainer && childrenContainer.offsetParent !== null) {
+            childrenContainer.style.display = "block";
             this.treeNodeViewChildren.forEach(child => child.contentHiddenToggleOff());
         }
-        this.contentHidden = false;
+
+        TreeNodeView.contentHidden = false;
         console.debug("content hidden OFF");
-        console.debug("contentHidden: ",this.contentHidden);
+        console.debug("contentHidden: ", TreeNodeView.contentHidden);
     }
     
     contentHiddenToggleOn() {
         const matchBlock = this.treeItem.querySelector(".search-result-file-matches") as HTMLElement | null;
         const childrenContainer = this.treeItem.querySelector(".tree-item-children");
-
-        const isLeaf = !childrenContainer || childrenContainer.querySelectorAll(":scope > .tree-item").length === 0;
+        const isLeaf = this.isLeaf();
 
         if (isLeaf) {
-            if (matchBlock) {
-                matchBlock.style.display = "none";
-            }
+            if (matchBlock) matchBlock.style.display = "none";
             this.treeItemSelf.addClass("is-collapsed");
             this.treeItemIcon.addClass("is-collapsed");
-        } else if (childrenContainer) {
-            this.treeNodeViewChildren.forEach(child => {
-                child.contentHiddenToggleOn();
-            });
-            // Do not forcibly expand non-leaf nodes: do not set childrenContainer.style.display = "block" here.
-            // Only collapse icon if all direct children are leaf nodes AND are currently collapsed
-            if (
-                this.treeNodeViewChildren.length > 0 &&
-                this.treeNodeViewChildren.every(child => child.isLeaf() && child.isCollapsed)
-            ) {
+        } else {
+            this.treeNodeViewChildren.forEach(child => child.contentHiddenToggleOn());
+
+            const allChildrenCollapsed = this.treeNodeViewChildren.length > 0 &&
+                this.treeNodeViewChildren.every(child => child.isLeaf() && child.isCollapsed);
+
+            if (allChildrenCollapsed) {
                 this.treeItemSelf.addClass("is-collapsed");
                 this.treeItemIcon.addClass("is-collapsed");
             }
-            // Otherwise, do not remove is-collapsed classes or alter collapsed state.
         }
 
-        this.contentHidden = true;
+        TreeNodeView.contentHidden = true;
         console.debug("content hidden ON");
-        console.debug("contentHidden: ",this.contentHidden);
+        console.debug("contentHidden: ", TreeNodeView.contentHidden);
     }
 
     isLeaf(): boolean {
@@ -207,25 +194,31 @@ export class TreeNodeView{
     toggle() {
         const matchBlock = this.treeItem.querySelector(".search-result-file-matches") as HTMLElement | null;
         const childrenContainer = this.treeItem.querySelector(".tree-item-children");
-      
+
         console.debug("[Toggle] isCollapsed (before toggle):", this.isCollapsed);
         this.isCollapsed = !this.isCollapsed;
-      
+
         this.treeItemSelf.toggleClass("is-collapsed", this.isCollapsed);
         this.treeItemIcon.toggleClass("is-collapsed", this.isCollapsed);
         console.debug("[Toggle] isLeaf:", this.isLeaf());
         console.debug("[Toggle] matchBlock:", matchBlock);
         console.debug("[Toggle] childrenContainer:", childrenContainer);
         console.debug("[Toggle] isCollapsed (after toggle):", this.isCollapsed);
-      
+
         if (matchBlock) {
-          matchBlock.style.display = this.isCollapsed ? "none" : "block";
-          matchBlock.toggleClass("is-hidden", this.isCollapsed); // ✅ explicitly sync class
+          // Respect local toggle override (manual triangle click) over global contentHidden
+          if (!this.isCollapsed) {
+            matchBlock.style.display = "block";
+            matchBlock.removeClass("is-hidden");
+          } else {
+            matchBlock.style.display = "none";
+            matchBlock.addClass("is-hidden");
+          }
         }
-      
+
         if (childrenContainer) {
           (childrenContainer as HTMLElement).style.display = this.isCollapsed ? "none" : "block";
         }
-      }
+    }
 
 }
