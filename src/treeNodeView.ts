@@ -114,15 +114,17 @@ export class TreeNodeView{
 
     contentHiddenToggleOff() {
         if (this.treeNode.isLeaf) {
-          if (!this.treeNode.parentNode?.isCollapsed) {
+          const parent = this.treeNode.parentNode;
+          if (!parent || !parent.isCollapsed) {
             this.treeNode.isCollapsed = false;
           }
         } else {
           this.treeNode.isCollapsed = true;
         }
+      
         this.treeNodeViewChildren.forEach(child => child.contentHiddenToggleOff());
-      TreeNodeView.contentHidden = false;
-    }
+        TreeNodeView.contentHidden = false;
+      }
 
     // isLeaf(): boolean {
     //     const childrenContainer = this.treeItem.querySelector(".tree-item-children");
