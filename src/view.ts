@@ -11,6 +11,7 @@ export const VIEW_TYPE="hierarchical-backlinks";
 export class HierarchicalBacklinksView extends ItemView {
     private plugin :HierarchicalBacklinksPlugin;
     private treeNodeViews: TreeNodeView[]=[];
+    private originalHierarchy: TreeNodeModel[] = [];
     constructor(leaf: WorkspaceLeaf, plugin: HierarchicalBacklinksPlugin){
         super(leaf);
         this.plugin=plugin;
@@ -78,8 +79,24 @@ export class HierarchicalBacklinksView extends ItemView {
             }
         });
 
+        // 🔍 Add search bar container
+        const searchContainer = container.createDiv({ cls: "backlink-search-container" });
+        const searchInput = searchContainer.createEl("input", {
+            type: "text",
+            placeholder: "Filter backlinks...",
+            cls: "backlink-search-input",
+        });
+
+        // Add event listener to filter backlinks (you'll implement filter logic later)
+        searchInput.addEventListener("input", (e) => {
+            const query = (e.target as HTMLInputElement).value.toLowerCase();
+            this.filterBacklinks(query);
+        });
+
         const pane=container.createDiv({cls: "backlink-pane"});
         this.appendLinks(pane, navButtonsView,"Linked mentions", hierarchy);
+
+        this.originalHierarchy = hierarchy;
 
         // Apply plugin toggle states to the freshly created treeNodeViews
         if (this.plugin.toggleListState) {
@@ -95,17 +112,62 @@ export class HierarchicalBacklinksView extends ItemView {
         }
     }
 
-    appendLinks(pane :HTMLDivElement, navButtonsView: NavButtonsView,headerText :string, links: any[]){
+    private filterBacklinks(query: string) {
+        const trimmed = query.trim().toLowerCase();
+    
+        const markVisibility = (node: TreeNodeModel): boolean => {
+            const pathSegments = node.path?.toLowerCase().split("/") ?? [];
+            const pathMatch = pathSegments.some(segment => segment.includes(trimmed));
+            const contentMatch = node.content?.toLowerCase().includes(trimmed) ?? false;
+            const isMatch = node.isLeaf && (pathMatch || contentMatch);
+    
+            let childrenMatch = false;
+            const newChildren: TreeNodeModel[] = [];
+
+
+            for (const child of node.children) {
+                const childMatches = markVisibility(child);
+                if (childMatches) {
+                    newChildren.push(child);
+                    childrenMatch = true;
+                }
+            }
+            
+            node.children = newChildren;
+            node.isVisible = isMatch || childrenMatch;
+
+            console.debug(`[filterTree] node="${node.path}", isLeaf=${node.isLeaf}, isMatch=${isMatch}, childrenMatches=${childrenMatch}`);
+            return node.isVisible;
+
+        };
+    
+        for (const node of this.originalHierarchy) {
+            markVisibility(node);
+        }
+    
+        console.debug(`[filterBacklinks] Query: "${trimmed}"`);
+    
+        const pane = this.containerEl.querySelector(".backlink-pane") as HTMLDivElement;
+        if (pane) {
+            pane.empty();
+            const navButtonsViewStub = new NavButtonsView(this.app, pane);
+            this.appendLinks(pane, navButtonsViewStub, "Filtered results", this.originalHierarchy);
+        }
+    }
+
+    appendLinks(pane :HTMLDivElement, navButtonsView: NavButtonsView, headerText :string, links: any[]){
         const linksHeader=pane.createDiv({cls: "tree-item-self is-clickable"});
         linksHeader.createEl("div",{text: headerText});
         pane.appendChild(linksHeader);
 
         const searchResultsContainer=pane.createDiv({cls: "search-result-container"});
 
-        if(links.length==0){
+        const visibleLinks = links.filter((l) => l.isVisible);
+
+        if(visibleLinks.length==0){
             searchResultsContainer.createDiv({cls: "search-empty-state", text: "No backlinks found."})
         }else{
-            links.forEach((l) =>{
+            visibleLinks.forEach((l) =>{
                 const treeNodeView=new TreeNodeView(this.app,searchResultsContainer, l);
                 treeNodeView.render();
                 this.treeNodeViews.push(treeNodeView);

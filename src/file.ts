@@ -21,36 +21,46 @@ export class File {
     }
     
     async getBacklinksHierarchy(): Promise<TreeNodeModel[]> {
-
         const result: TreeNodeModel[] = [];
-        const level = {result};
-        const backlinks=this.getBacklinks();
+        const level: Record<string, any> = { result };
+        const backlinks = this.getBacklinks();
 
         for (const [path, backlinkReferences] of backlinks.data.entries()) {
-            const parts=path.split('/');
+            const parts = path.split('/');
             const file = this.app.vault.getFileByPath(path);
-            if(file){
-                const cached=this.app.vault.cachedRead(file);
-                const content=(await cached);
-                const references=(await this.getReferences(path, (backlinkReferences as BacklinkReference[])));
-                parts.reduce((r :any, name :string, i :any, a :any) => {
+
+            if (file) {
+                const cached = this.app.vault.cachedRead(file);
+                const content = await cached;
+                const references = await this.getReferences(path, backlinkReferences as BacklinkReference[]);
+
+                parts.reduce((r: any, name: string, i: number, a: string[]) => {
                     if (!r[name]) {
                         r[name] = { result: [] };
-                    
+
                         const isLast = i === parts.length - 1;
                         const node = new TreeNodeModel(
                             name,
-                            content,
+                            isLast ? content : "",
                             isLast ? references : [],
-                            r[name].result  // ← children will be added here recursively
-                        );
-                    
+                            r[name].result,
+                            r.__node ?? null,
+                            isLast
+                          );
+                        node.isLeaf = isLast;
+                        node.parent = r.__node ?? undefined;
+                        node.path = isLast ? path : "";             // full path only for leaf
+                        node.isVisible = true;
+
                         r.result.push(node);
+                        r[name].__node = node;
                     }
+
                     return r[name];
                 }, level);
             }
-        }	
+        }
+
         return result;
     }
 

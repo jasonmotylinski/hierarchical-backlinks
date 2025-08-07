@@ -52,9 +52,9 @@ export class TreeNodeView{
     appendEndNode(parent :HTMLDivElement, treeNode :TreeNodeModel){
         this.treeItemIcon=parent.createDiv({cls: "tree-item-icon collapse-icon"});
 
-        let name = treeNode.name;
+        let name = treeNode.title;
         if(treeNode.children && treeNode.children.length == 0){
-            const firstLink=this.app.metadataCache.getFirstLinkpathDest(treeNode.name, '');
+            const firstLink=this.app.metadataCache.getFirstLinkpathDest(treeNode.title, '');
             
             if(firstLink){
                 name=firstLink.basename;
@@ -69,7 +69,7 @@ export class TreeNodeView{
             this.toggle();
         });
         treeItemInner.addEventListener("click", (e)=>{ 
-            this.navigateTo(treeNode.name);
+            this.navigateTo(treeNode.path);
         });
     }
 
@@ -83,8 +83,8 @@ export class TreeNodeView{
 
     }
 
-    navigateTo(name :string){
-        const firstLink=this.app.metadataCache.getFirstLinkpathDest(name, '');
+    navigateTo(path :string){
+        const firstLink=this.app.metadataCache.getFirstLinkpathDest(path, '');
             
         if(firstLink){
             this.app.workspace.openLinkText(firstLink.name, firstLink.path);
@@ -104,7 +104,7 @@ export class TreeNodeView{
         
         this.updateCollapsedState();
 
-        Logger.log("[ListToggleOn]", this.treeNode.name, "→ isCollapsed set to:", this.treeNode.isCollapsed);
+        Logger.log("[ListToggleOn]", this.treeNode.title, "→ isCollapsed set to:", this.treeNode.isCollapsed);
     }
 
     listToggleOff() {
@@ -118,15 +118,15 @@ export class TreeNodeView{
         
         this.updateCollapsedState();
 
-        Logger.log("[ListToggleOff]", this.treeNode.name, "| isLeaf:", this.treeNode.isLeaf, "| contentHidden:", TreeNodeView.contentHidden, "→ isCollapsed set to:", this.treeNode.isCollapsed);
+        Logger.log("[ListToggleOff]", this.treeNode.title, "| isLeaf:", this.treeNode.isLeaf, "| contentHidden:", TreeNodeView.contentHidden, "→ isCollapsed set to:", this.treeNode.isCollapsed);
     }
 
     contentHiddenToggleOn() {
         if (this.treeNode.isLeaf) {
-            Logger.log("[ContentHiddenToggleOn]", this.treeNode.name, "| isLeaf:", true, "→ Collapsing");
+            Logger.log("[ContentHiddenToggleOn]", this.treeNode.title, "| isLeaf:", true, "→ Collapsing");
             this.treeNode.isCollapsed = true;
         } else {
-            Logger.log("[ContentHiddenToggleOn]", this.treeNode.name, "| isLeaf:", false, "→ Skipping collapse");
+            Logger.log("[ContentHiddenToggleOn]", this.treeNode.title, "| isLeaf:", false, "→ Skipping collapse");
         }
 
         this.treeNodeViewChildren.forEach(child => child.contentHiddenToggleOn());
@@ -139,16 +139,16 @@ export class TreeNodeView{
 
     contentHiddenToggleOff() {
         if (this.treeNode.isLeaf) {
-            const parent = this.treeNode.parentNode;
+            const parent = this.treeNode.parent;
             const parentCollapsed = parent?.isCollapsed ?? false;
 
-            Logger.log("[ContentHiddenToggleOff]", this.treeNode.name, "| isLeaf:", true, "| hasParent:", !!parent, "| parent.isCollapsed:", parentCollapsed);
+            Logger.log("[ContentHiddenToggleOff]", this.treeNode.title, "| isLeaf:", true, "| hasParent:", !!parent, "| parent.isCollapsed:", parentCollapsed);
 
             if (!parent || !parentCollapsed) {
                 this.treeNode.isCollapsed = false;
-                Logger.log("[ContentHiddenToggleOff] → Expanding leaf node:", this.treeNode.name);
+                Logger.log("[ContentHiddenToggleOff] → Expanding leaf node:", this.treeNode.title);
             } else {
-                Logger.log("[ContentHiddenToggleOff] → Keeping leaf node collapsed due to collapsed parent:", this.treeNode.name);
+                Logger.log("[ContentHiddenToggleOff] → Keeping leaf node collapsed due to collapsed parent:", this.treeNode.title);
             }
         }
 

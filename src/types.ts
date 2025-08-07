@@ -2,13 +2,15 @@ import { SearchMatches } from "obsidian";
 
 // Implemented in TreeNodeModel
 export interface TreeNode {
-    name: string;
-    children: TreeNode[];
-    references: ContentReference[];
+    path: string;
+    title: string;
     content: string;
-    isCollapsed: boolean;
+    references: ContentReference[];
+    children: TreeNode[];
+    parent: TreeNode | null;
     isLeaf: boolean;
-    parentNode: TreeNode | null;
+    isCollapsed: boolean;
+    isVisible: boolean;
   }
 
 export interface Point {

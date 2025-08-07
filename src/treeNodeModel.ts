@@ -1,34 +1,38 @@
 import type { TreeNode, ContentReference } from "./types";
 
 export class TreeNodeModel implements TreeNode {
-  name: string;
+  path: string;
+  title: string;
+  content: string;
   children: TreeNodeModel[];
   references: ContentReference[];
-  content: string;
   isCollapsed: boolean = false;
-  parentNode: TreeNodeModel | null = null;
+  parent: TreeNodeModel | null;
+  isLeaf: boolean;
+  isVisible: boolean = true;
 
   static contentHidden: boolean = false;
 
   constructor(
-    name: string,
+    path: string,
     content: string,
     references: ContentReference[],
-    children: TreeNodeModel[] = [],
-    parent: TreeNodeModel | null = null
+    children: TreeNodeModel[],
+    parent: TreeNodeModel | null,
+    isLeaf: boolean,
+    isVisible: boolean = true
   ) {
-    this.name = name;
+    this.path = path;
+    this.title = path.split("/").pop()?.replace(/\.md$/, "") ?? path;
     this.content = content;
-    this.references = references;
     this.children = children;
-    this.parentNode = parent;
+    this.references = references;
+    this.isLeaf = isLeaf;
+    this.parent = parent;
+    this.isVisible = isVisible;
 
     for (const child of this.children) {
-      child.parentNode = this;
+      child.parent = this;
     }
-  }
-
-  get isLeaf(): boolean {
-    return this.children.length === 0;
   }
 }
