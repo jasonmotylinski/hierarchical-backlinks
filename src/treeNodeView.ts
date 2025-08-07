@@ -151,42 +151,9 @@ export class TreeNodeView{
       console.debug("[ContentHiddenToggleOff] contentHidden set to false");
     }
 
-    // isLeaf(): boolean {
-    //     const childrenContainer = this.treeItem.querySelector(".tree-item-children");
-    //     return !childrenContainer || childrenContainer.querySelectorAll(":scope > .tree-item").length === 0;
-    // } 
-
     toggle() {
-        const matchBlock = this.treeItem.querySelector(".search-result-file-matches") as HTMLElement | null;
-        const childrenContainer = this.treeItem.querySelector(".tree-item-children");
-
-        console.debug("[Toggle] isCollapsed (before toggle):", this.treeNode.isCollapsed);
-
         this.treeNode.isCollapsed = !this.treeNode.isCollapsed;
-
-        this.treeItemSelf.toggleClass("is-collapsed", this.treeNode.isCollapsed);
-        this.treeItemIcon.toggleClass("is-collapsed", this.treeNode.isCollapsed);
-        console.debug("[Toggle] isLeaf:", this.treeNode.isLeaf);
-        console.debug("[Toggle] matchBlock:", matchBlock);
-        console.debug("[Toggle] childrenContainer:", childrenContainer);
-        console.debug("[Toggle] isCollapsed (after toggle):", this.treeNode.isCollapsed);
-
-        if (matchBlock) {
-          // Only show matchBlock when node is a leaf or contentHidden is false
-          if (!this.treeNode.isCollapsed) {
-            if (this.treeNode.isLeaf || !TreeNodeView.contentHidden) {
-              matchBlock.style.display = "block";
-              matchBlock.removeClass("is-hidden");
-            }
-          } else {
-            matchBlock.style.display = "none";
-            matchBlock.addClass("is-hidden");
-          }
-        }
-
-        if (childrenContainer) {
-          (childrenContainer as HTMLElement).style.display = this.treeNode.isCollapsed ? "none" : "block";
-        }
+        this.updateCollapsedState();
     }
 
     updateCollapsedState() {
