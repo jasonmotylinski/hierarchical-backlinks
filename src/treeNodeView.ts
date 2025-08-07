@@ -89,23 +89,32 @@ export class TreeNodeView{
     }
 
     listToggleOff() {
+        console.debug("[ListToggleOff]", this.treeNode.name, "| isLeaf:", this.treeNode.isLeaf);
         if (this.treeNode.isLeaf) {
-            this.treeNode.isCollapsed = TreeNodeView.contentHidden ? false : true;
+            this.treeNode.isCollapsed = TreeNodeView.contentHidden;
         } else {
             this.treeNode.isCollapsed = true;
         }
+        console.debug("[ListToggleOff]", this.treeNode.name, "→ isCollapsed set to:", this.treeNode.isCollapsed);
         this.treeNodeViewChildren.forEach(child => child.listToggleOff());
 
-        this.updateCollapsedState();
+        this.updateCollapsedState(); 
     }
     
     listToggleOn() {
-        if (this.treeNode.parentNode !== null) {
-            this.treeNode.isCollapsed = true;
-        }
-        this.treeNodeViewChildren.forEach(child => child.listToggleOn());
+      console.debug("[ListToggleOn]", this.treeNode.name, "| isLeaf:", this.treeNode.isLeaf, "| contentHidden:", TreeNodeView.contentHidden);
 
-        this.updateCollapsedState();
+      if (!this.treeNode.isLeaf || !TreeNodeView.contentHidden) {
+        this.treeNode.isCollapsed = false;
+      } else {
+        this.treeNode.isCollapsed = true;
+      }
+
+      console.debug("[ListToggleOn]", this.treeNode.name, "→ isCollapsed set to:", this.treeNode.isCollapsed);
+
+      this.treeNodeViewChildren.forEach(child => child.listToggleOn());
+
+      this.updateCollapsedState();
     }
 
     contentHiddenToggleOn() {
