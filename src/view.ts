@@ -1,7 +1,7 @@
 import { ItemView, WorkspaceLeaf } from "obsidian";
 import { File } from "./file";
 import HierarchicalBacklinksPlugin  from "./main";
-import { TreeNodeModel } from "./models/TreeNodeModel";
+import { TreeNodeModel } from "./treeNodeModel";
 import { TreeNodeView } from "./treeNodeView";
 import { NavButtonsView } from "./nav/navButtonsView";
 
@@ -45,12 +45,19 @@ export class HierarchicalBacklinksView extends ItemView {
         const navButtonsView=new NavButtonsView(this.app, container);
         navButtonsView.render();
 
+  
+        navButtonsView.listCollapseButton.setCollapsed(this.plugin.toggleListState);
+        navButtonsView.contentCollapseButton.setCollapsed(this.plugin.toggleContentState);
+
+
         navButtonsView.listCollapseButton.on("collapse-click", (e)=> {
             if(navButtonsView.listCollapseButton.isCollapsed()){
+                this.plugin.toggleListState=true;
                 this.treeNodeViews.forEach((n)=>{
                     n.listToggleOn();
                 });
             }else{
+                this.plugin.toggleListState=false;
                 this.treeNodeViews.forEach((n)=>{
                     n.listToggleOff();
                 });
@@ -59,10 +66,12 @@ export class HierarchicalBacklinksView extends ItemView {
 
         navButtonsView.contentCollapseButton.on("collapse-click", (e)=> {
             if(navButtonsView.contentCollapseButton.isCollapsed()){
+                this.plugin.toggleContentState=true;
                 this.treeNodeViews.forEach((n)=>{
                     n.contentHiddenToggleOn();
                 });
             }else{
+                this.plugin.toggleContentState=false;
                 this.treeNodeViews.forEach((n)=>{
                     n.contentHiddenToggleOff();
                 });
@@ -71,6 +80,19 @@ export class HierarchicalBacklinksView extends ItemView {
 
         const pane=container.createDiv({cls: "backlink-pane"});
         this.appendLinks(pane, navButtonsView,"Linked mentions", hierarchy);
+
+        // Apply plugin toggle states to the freshly created treeNodeViews
+        if (this.plugin.toggleListState) {
+            this.treeNodeViews.forEach((n) => n.listToggleOn());
+        } else {
+            this.treeNodeViews.forEach((n) => n.listToggleOff());
+        }
+
+        if (this.plugin.toggleContentState) {
+            this.treeNodeViews.forEach((n) => n.contentHiddenToggleOn());
+        } else {
+            this.treeNodeViews.forEach((n) => n.contentHiddenToggleOff());
+        }
     }
 
     appendLinks(pane :HTMLDivElement, navButtonsView: NavButtonsView,headerText :string, links: any[]){
