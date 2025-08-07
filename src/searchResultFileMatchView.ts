@@ -15,8 +15,9 @@ export class SearchResultFileMatchView {
         this.references=references;
     }
     render(){
-        const matchesDiv=this.parent.createDiv({cls: 'search-result-file-matches'});
-        matchesDiv.addEventListener('click', (e) => {
+        // const matchesDiv=this.parent.createDiv({cls: 'search-result-file-matches'});
+        // Removed the outer container creation as per instructions
+        this.parent.addEventListener('click', (e) => {
             const firstLink=this.app.metadataCache.getFirstLinkpathDest(this.references[0].path, '');
     
             if(firstLink){
@@ -43,7 +44,7 @@ export class SearchResultFileMatchView {
                     if(currentBoundary[0]==nextBoundary[0] && currentBoundary[1]==nextBoundary[1]) continue;
                 }
 
-				const matchDiv=matchesDiv.createDiv({cls: "search-result-file-match"});
+				const matchDiv=this.parent.createDiv({cls: "search-result-file-match"});
                 this.highlightMatches(matchDiv, frontmatterContent, (currentBoundary[0] as number), (currentBoundary[1] as number), matchesInLine);
                 matchesInLine=[];
 			}
@@ -58,7 +59,7 @@ export class SearchResultFileMatchView {
                     if(currentBoundary[0]==nextBoundary[0] && currentBoundary[1]==nextBoundary[1]) continue;
                 }
 
-                const matchDiv=matchesDiv.createDiv({cls: "search-result-file-match"});
+                const matchDiv=this.parent.createDiv({cls: "search-result-file-match"});
                 this.highlightMatches(matchDiv, this.content, (currentBoundary[0] as number), (currentBoundary[1] as number), matchesInLine);
                 matchesInLine=[];
             }
