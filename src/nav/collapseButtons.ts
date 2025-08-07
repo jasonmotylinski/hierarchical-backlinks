@@ -25,7 +25,7 @@ export class CollapseButton extends EventEmitter  {
   }
 
   isCollapsed(): boolean{
-      return this.button.hasClass("is-active");
+      return this.button.hasClass("is-active"); 
   }
  
 }

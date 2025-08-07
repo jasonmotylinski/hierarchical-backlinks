@@ -45,8 +45,8 @@ export class HierarchicalBacklinksView extends ItemView {
         const navButtonsView=new NavButtonsView(this.app, container);
         navButtonsView.render();
 
-        navButtonsView.totalCollapseButton.on("collapse-click", (e)=> {
-            if(navButtonsView.totalCollapseButton.isCollapsed()){
+        navButtonsView.listCollapseButton.on("collapse-click", (e)=> {
+            if(navButtonsView.listCollapseButton.isCollapsed()){
                 this.treeNodeViews.forEach((n)=>{
                     n.listToggleOn();
                 });

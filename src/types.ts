@@ -1,5 +1,6 @@
 import { SearchMatches } from "obsidian";
 
+// Implemented in TreeNodeModel
 export interface TreeNode {
     name: string;
     children: TreeNode[];

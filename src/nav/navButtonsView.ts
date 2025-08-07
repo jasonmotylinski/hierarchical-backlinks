@@ -5,7 +5,7 @@ export class NavButtonsView {
     private app;
     private parent;
     public contentCollapseButton: CollapseButton;
-    public totalCollapseButton: CollapseButton;
+    public listCollapseButton: CollapseButton;
 
     constructor(app: App, parent: Element) {
         this.app=app;
@@ -16,8 +16,8 @@ export class NavButtonsView {
         const navButtonsContainer=this.parent.createDiv({cls:"nav-header"})
                                              .createDiv({cls: "nav-buttons-container"});
         
-        this.totalCollapseButton = new CollapseButton(this.app, navButtonsContainer,'list');
-        this.totalCollapseButton.render();
+        this.listCollapseButton = new CollapseButton(this.app, navButtonsContainer,'list');
+        this.listCollapseButton.render();
         this.contentCollapseButton=new CollapseButton(this.app, navButtonsContainer, 'file-minus');
         this.contentCollapseButton.render();
     }
