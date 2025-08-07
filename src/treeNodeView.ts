@@ -1,25 +1,25 @@
 import { App, setIcon } from "obsidian";
 import { SearchResultFileMatchView } from "./searchResultFileMatchView";
-import { ContentReference, TreeNode } from "./types";
+import { ContentReference} from "./types";
+import { TreeNodeModel } from "./models/TreeNodeModel";
 
 export class TreeNodeView{
     private app: App;
-    private isCollapsed: boolean;
     private static contentHidden: boolean = true;
     private parent: HTMLDivElement;
     private treeItem: HTMLDivElement;
     private treeItemSelf: HTMLDivElement;
     private treeItemIcon: HTMLDivElement;
-    private treeNode: TreeNode;
+    private treeNode: TreeNodeModel;
     private treeNodeViewChildren: TreeNodeView[];
-    private hasUserToggled: boolean = false;
-    constructor(app: App, parent: HTMLDivElement, treeNode: TreeNode) {
-        this.app=app;
-        this.isCollapsed=false;
-        this.parent=parent;
-        this.treeNode=treeNode;
-        this.treeNodeViewChildren=[];
-    }
+    private childrenContainer: HTMLDivElement | null = null;
+    private matchBlock: HTMLDivElement | null = null;
+    constructor(app: App, parent: HTMLDivElement, treeNode: TreeNodeModel) {
+        this.app = app;
+        this.parent = parent;
+        this.treeNode = treeNode;
+        this.treeNodeViewChildren = [];
+      }
 
     render(){
         this.treeItem=this.parent.createDiv({cls: "tree-item"});
@@ -40,7 +40,7 @@ export class TreeNodeView{
         }
     }
 
-    appendEndNode(parent :HTMLDivElement, treeNode :TreeNode){
+    appendEndNode(parent :HTMLDivElement, treeNode :TreeNodeModel){
         this.treeItemIcon=parent.createDiv({cls: "tree-item-icon collapse-icon"});
 
         let name = treeNode.name;
@@ -56,7 +56,7 @@ export class TreeNodeView{
         setIcon(this.treeItemIcon, 'right-triangle');
 
         this.treeItemIcon.addEventListener("click", (e)=> {
-            this.hasUserToggled = true;
+
             this.toggle();
         });
         treeItemInner.addEventListener("click", (e)=>{ 
@@ -64,10 +64,10 @@ export class TreeNodeView{
         });
     }
 
-    appendTreeItemChildren(treeItem:HTMLDivElement, children :TreeNode[]){
-        const treeItemChildren=treeItem.createDiv({cls: "tree-item-children"});
+    appendTreeItemChildren(treeItem:HTMLDivElement, children :TreeNodeModel[]){
+        this.childrenContainer=treeItem.createDiv({cls: "tree-item-children"});
         children.forEach((c)=>{ 
-            const treeNodeView=new TreeNodeView(this.app, treeItemChildren, c);
+            const treeNodeView=new TreeNodeView(this.app, this.childrenContainer!, c);
             treeNodeView.render();
             this.treeNodeViewChildren.push(treeNodeView);
         });
@@ -82,137 +82,72 @@ export class TreeNodeView{
         }
     }
 
-    appendReferences(parent:HTMLDivElement, item: TreeNode, references :ContentReference[]){
-        const searchResultFileMatchView=new SearchResultFileMatchView(this.app, parent, item.content, references);
-        searchResultFileMatchView.render();
+    appendReferences(parent:HTMLDivElement, item: TreeNodeModel, references :ContentReference[]){
+        this.matchBlock = parent.createDiv({ cls: "search-result-file-matches" });
+        const matchView = new SearchResultFileMatchView(this.app, this.matchBlock, item.content, references);
+        matchView.render();
     }
 
     listToggleOff() {
-        console.debug("LIST TOGGLE OFF START");
-
-        this.treeItemSelf.removeClass("is-collapsed");
-        this.treeItemIcon.removeClass("is-collapsed");
-
-        const childrenContainer = this.treeItem.querySelector(".tree-item-children") as HTMLElement | null;
-        if (childrenContainer) {
-            childrenContainer.style.display = "block";
+        if (this.treeNode.isLeaf) {
+            this.treeNode.isCollapsed = TreeNodeView.contentHidden ? false : true;
+        } else {
+            this.treeNode.isCollapsed = true;
         }
-
-        const matchBlock = this.treeItem.querySelector(".search-result-file-matches") as HTMLElement | null;
-        if (matchBlock && !TreeNodeView.contentHidden) {
-            matchBlock.style.display = "block";
-            matchBlock.removeClass("is-hidden");
-        }
-
         this.treeNodeViewChildren.forEach(child => child.listToggleOff());
-
-        if (TreeNodeView.contentHidden && this.isLeaf()) {
-            this.treeItemIcon.addClass("is-collapsed");
-        }
-
-        console.debug("list OFF");
     }
     
     listToggleOn() {
-
-        this.treeItemSelf.addClass("is-collapsed");
-        this.treeItemIcon.addClass("is-collapsed");
-
-        const childrenContainer = this.treeItem.querySelector(".tree-item-children") as HTMLElement | null;
-        if (childrenContainer) {
-            childrenContainer.style.display = "none";
+        if (this.treeNode.parentNode !== null) {
+            this.treeNode.isCollapsed = true;
         }
+        this.treeNodeViewChildren.forEach(child => child.listToggleOn());
+    }
 
-        const matchBlock = this.treeItem.querySelector(".search-result-file-matches") as HTMLElement | null;
-        if (matchBlock) {
-            matchBlock.style.display = "none";
-            matchBlock.addClass("is-hidden");
-        }
-
-        this.treeNodeViewChildren.forEach((c) => {
-            c.listToggleOn();
-        });
-        console.debug("list ON");
+    contentHiddenToggleOn() {
+      if (this.treeNode.isLeaf) {
+        this.treeNode.isCollapsed = true;
+      }
+      this.treeNodeViewChildren.forEach(child => child.contentHiddenToggleOn());
+      TreeNodeView.contentHidden = true;
     }
 
     contentHiddenToggleOff() {
-        this.hasUserToggled = false;
-        const matchBlock = this.treeItem.querySelector(".search-result-file-matches") as HTMLElement | null;
-        const childrenContainer = this.treeItem.querySelector(".tree-item-children") as HTMLElement | null;
-
-        // Only operate if this tree item is visible (its parent is not collapsed)
-        if (this.treeItem.offsetParent === null) return;
-
-        if (this.isLeaf() && !this.hasUserToggled) {
-            this.treeItemSelf.removeClass("is-collapsed");
-            this.treeItemIcon.removeClass("is-collapsed");
-            if (matchBlock) {
-                matchBlock.style.display = "block";
-                matchBlock.removeClass("is-hidden");
-            }
-        }
-
-        if (childrenContainer && childrenContainer.offsetParent !== null) {
-            childrenContainer.style.display = "block";
-            this.treeNodeViewChildren.forEach(child => child.contentHiddenToggleOff());
-        }
-
-        TreeNodeView.contentHidden = false;
-        console.debug("content hidden OFF");
-        console.debug("contentHidden: ", TreeNodeView.contentHidden);
-    }
-    
-    contentHiddenToggleOn() {
-        this.hasUserToggled = false;
-        const matchBlock = this.treeItem.querySelector(".search-result-file-matches") as HTMLElement | null;
-        const childrenContainer = this.treeItem.querySelector(".tree-item-children");
-        const isLeaf = this.isLeaf();
-
-        if (isLeaf && !this.hasUserToggled) {
-            if (matchBlock) matchBlock.style.display = "none";
-            this.treeItemSelf.addClass("is-collapsed");
-            this.treeItemIcon.addClass("is-collapsed");
+        if (this.treeNode.isLeaf) {
+          if (!this.treeNode.parentNode?.isCollapsed) {
+            this.treeNode.isCollapsed = false;
+          }
         } else {
-            this.treeNodeViewChildren.forEach(child => child.contentHiddenToggleOn());
-
-            const allChildrenCollapsed = this.treeNodeViewChildren.length > 0 &&
-                this.treeNodeViewChildren.every(child => child.isLeaf());
-
-            if (allChildrenCollapsed) {
-                this.treeItemSelf.addClass("is-collapsed");
-                this.treeItemIcon.addClass("is-collapsed");
-            }
+          this.treeNode.isCollapsed = true;
         }
-
-        TreeNodeView.contentHidden = true;
-        console.debug("content hidden ON");
-        console.debug("contentHidden: ", TreeNodeView.contentHidden);
+        this.treeNodeViewChildren.forEach(child => child.contentHiddenToggleOff());
+      TreeNodeView.contentHidden = false;
     }
 
-    isLeaf(): boolean {
-        const childrenContainer = this.treeItem.querySelector(".tree-item-children");
-        return !childrenContainer || childrenContainer.querySelectorAll(":scope > .tree-item").length === 0;
-    }
+    // isLeaf(): boolean {
+    //     const childrenContainer = this.treeItem.querySelector(".tree-item-children");
+    //     return !childrenContainer || childrenContainer.querySelectorAll(":scope > .tree-item").length === 0;
+    // }
 
     toggle() {
         const matchBlock = this.treeItem.querySelector(".search-result-file-matches") as HTMLElement | null;
         const childrenContainer = this.treeItem.querySelector(".tree-item-children");
 
-        console.debug("[Toggle] isCollapsed (before toggle):", this.isCollapsed);
-        this.hasUserToggled = true;
-        this.isCollapsed = !this.isCollapsed;
+        console.debug("[Toggle] isCollapsed (before toggle):", this.treeNode.isCollapsed);
 
-        this.treeItemSelf.toggleClass("is-collapsed", this.isCollapsed);
-        this.treeItemIcon.toggleClass("is-collapsed", this.isCollapsed);
-        console.debug("[Toggle] isLeaf:", this.isLeaf());
+        this.treeNode.isCollapsed = !this.treeNode.isCollapsed;
+
+        this.treeItemSelf.toggleClass("is-collapsed", this.treeNode.isCollapsed);
+        this.treeItemIcon.toggleClass("is-collapsed", this.treeNode.isCollapsed);
+        console.debug("[Toggle] isLeaf:", this.treeNode.isLeaf);
         console.debug("[Toggle] matchBlock:", matchBlock);
         console.debug("[Toggle] childrenContainer:", childrenContainer);
-        console.debug("[Toggle] isCollapsed (after toggle):", this.isCollapsed);
+        console.debug("[Toggle] isCollapsed (after toggle):", this.treeNode.isCollapsed);
 
         if (matchBlock) {
           // Only show matchBlock when node is a leaf or contentHidden is false
-          if (!this.isCollapsed) {
-            if (this.isLeaf() || !TreeNodeView.contentHidden) {
+          if (!this.treeNode.isCollapsed) {
+            if (this.treeNode.isLeaf || !TreeNodeView.contentHidden) {
               matchBlock.style.display = "block";
               matchBlock.removeClass("is-hidden");
             }
@@ -223,13 +158,26 @@ export class TreeNodeView{
         }
 
         if (childrenContainer) {
-          (childrenContainer as HTMLElement).style.display = this.isCollapsed ? "none" : "block";
+          (childrenContainer as HTMLElement).style.display = this.treeNode.isCollapsed ? "none" : "block";
         }
     }
 
-    resetUserToggles() {
-        this.hasUserToggled = false;
-        this.treeNodeViewChildren.forEach(child => child.resetUserToggles());
-    }
+    updateCollapsedState() {
+        const isCollapsed = this.treeNode.isCollapsed;
+      
+        this.treeItemSelf.toggleClass("is-collapsed", isCollapsed);
+        this.treeItemIcon.toggleClass("is-collapsed", isCollapsed);
+      
+        if (this.childrenContainer) {
+          this.childrenContainer.style.display = isCollapsed ? "none" : "block";
+        }
+      
+        if (this.matchBlock) {
+          this.matchBlock.style.display = isCollapsed ? "none" : "block";
+          this.matchBlock.toggleClass("is-hidden", isCollapsed);
+        }
+      
+        this.treeNodeViewChildren.forEach(child => child.updateCollapsedState());
+      }
 
 }

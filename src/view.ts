@@ -1,7 +1,7 @@
 import { ItemView, WorkspaceLeaf } from "obsidian";
 import { File } from "./file";
 import HierarchicalBacklinksPlugin  from "./main";
-import { TreeNode } from "./types";
+import { TreeNodeModel } from "./models/TreeNodeModel";
 import { TreeNodeView } from "./treeNodeView";
 import { NavButtonsView } from "./nav/navButtonsView";
 
@@ -40,7 +40,7 @@ export class HierarchicalBacklinksView extends ItemView {
         }
     }
 
-    createPane(container :Element, hierarchy :TreeNode[]){
+    createPane(container: Element, hierarchy: TreeNodeModel[]) {
         
         const navButtonsView=new NavButtonsView(this.app, container);
         navButtonsView.render();
@@ -49,10 +49,12 @@ export class HierarchicalBacklinksView extends ItemView {
             if(navButtonsView.totalCollapseButton.isCollapsed()){
                 this.treeNodeViews.forEach((n)=>{
                     n.listToggleOn();
+                    n.updateCollapsedState(); // ← reflect model change in DOM
                 });
             }else{
                 this.treeNodeViews.forEach((n)=>{
                     n.listToggleOff();
+                    n.updateCollapsedState();
                 });
             }
         });
@@ -61,10 +63,12 @@ export class HierarchicalBacklinksView extends ItemView {
             if(navButtonsView.contentCollapseButton.isCollapsed()){
                 this.treeNodeViews.forEach((n)=>{
                     n.contentHiddenToggleOn();
+                    n.updateCollapsedState()
                 });
             }else{
                 this.treeNodeViews.forEach((n)=>{
                     n.contentHiddenToggleOff();
+                    n.updateCollapsedState()
                 });
             }
         });
