@@ -114,6 +114,15 @@ export class HierarchicalBacklinksView extends ItemView {
 
     private filterBacklinks(query: string) {
         const trimmed = query.trim().toLowerCase();
+
+        const resetVisibility = (node: TreeNodeModel) => {
+            node.isVisible = false;
+            for (const child of node.children) {
+                resetVisibility(child);
+            }
+        };
+
+
     
         const markVisibility = (node: TreeNodeModel): boolean => {
             const pathSegments = node.path?.toLowerCase().split("/") ?? [];
@@ -122,24 +131,26 @@ export class HierarchicalBacklinksView extends ItemView {
             const isMatch = node.isLeaf && (pathMatch || contentMatch);
     
             let childrenMatch = false;
-            const newChildren: TreeNodeModel[] = [];
 
 
             for (const child of node.children) {
                 const childMatches = markVisibility(child);
                 if (childMatches) {
-                    newChildren.push(child);
                     childrenMatch = true;
                 }
             }
             
-            node.children = newChildren;
+
             node.isVisible = isMatch || childrenMatch;
 
             console.debug(`[filterTree] node="${node.path}", isLeaf=${node.isLeaf}, isMatch=${isMatch}, childrenMatches=${childrenMatch}`);
             return node.isVisible;
 
         };
+
+        for (const node of this.originalHierarchy) {
+            resetVisibility(node);
+        }
     
         for (const node of this.originalHierarchy) {
             markVisibility(node);
@@ -162,12 +173,31 @@ export class HierarchicalBacklinksView extends ItemView {
 
         const searchResultsContainer=pane.createDiv({cls: "search-result-container"});
 
-        const visibleLinks = links.filter((l) => l.isVisible);
+        // Clear stale view references before re-rendering
+        this.treeNodeViews = [];
 
-        if(visibleLinks.length==0){
+        // If filtering ran, nodes have `isVisible` set for matches and their ancestors.
+        // We must prune children that are not visible so descendants don’t appear
+        // just because an ancestor matched.
+        const hasVisibility = Array.isArray(links) && links.some((l) => Object.prototype.hasOwnProperty.call(l, "isVisible"));
+
+        const pruneBranch = (nodes: TreeNodeModel[]): TreeNodeModel[] => {
+            if (!Array.isArray(nodes)) return [];
+            return nodes
+                .filter((n) => !hasVisibility || n.isVisible)
+                .map((n) => ({
+                    ...n,
+                    // Recursively prune children too
+                    children: pruneBranch(n.children ?? [])
+                }));
+        };
+
+        const linksToRender: TreeNodeModel[] = hasVisibility ? pruneBranch(links) : links;
+
+        if(linksToRender.length==0){
             searchResultsContainer.createDiv({cls: "search-empty-state", text: "No backlinks found."})
         }else{
-            visibleLinks.forEach((l) =>{
+            linksToRender.forEach((l) =>{
                 const treeNodeView=new TreeNodeView(this.app,searchResultsContainer, l);
                 treeNodeView.render();
                 this.treeNodeViews.push(treeNodeView);
