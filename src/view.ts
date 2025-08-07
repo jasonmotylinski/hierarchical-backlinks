@@ -49,12 +49,10 @@ export class HierarchicalBacklinksView extends ItemView {
             if(navButtonsView.totalCollapseButton.isCollapsed()){
                 this.treeNodeViews.forEach((n)=>{
                     n.listToggleOn();
-                    n.updateCollapsedState(); // ← reflect model change in DOM
                 });
             }else{
                 this.treeNodeViews.forEach((n)=>{
                     n.listToggleOff();
-                    n.updateCollapsedState();
                 });
             }
         });
@@ -63,12 +61,10 @@ export class HierarchicalBacklinksView extends ItemView {
             if(navButtonsView.contentCollapseButton.isCollapsed()){
                 this.treeNodeViews.forEach((n)=>{
                     n.contentHiddenToggleOn();
-                    n.updateCollapsedState()
                 });
             }else{
                 this.treeNodeViews.forEach((n)=>{
                     n.contentHiddenToggleOff();
-                    n.updateCollapsedState()
                 });
             }
         });

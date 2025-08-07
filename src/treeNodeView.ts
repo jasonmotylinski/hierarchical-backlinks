@@ -95,6 +95,8 @@ export class TreeNodeView{
             this.treeNode.isCollapsed = true;
         }
         this.treeNodeViewChildren.forEach(child => child.listToggleOff());
+
+        this.updateCollapsedState();
     }
     
     listToggleOn() {
@@ -102,29 +104,46 @@ export class TreeNodeView{
             this.treeNode.isCollapsed = true;
         }
         this.treeNodeViewChildren.forEach(child => child.listToggleOn());
+
+        this.updateCollapsedState();
     }
 
     contentHiddenToggleOn() {
       if (this.treeNode.isLeaf) {
+        console.debug("[ContentHiddenToggleOn]", this.treeNode.name, "| isLeaf:", true, "→ Collapsing");
         this.treeNode.isCollapsed = true;
+      } else {
+        console.debug("[ContentHiddenToggleOn]", this.treeNode.name, "| isLeaf:", false, "→ Skipping collapse");
       }
+
       this.treeNodeViewChildren.forEach(child => child.contentHiddenToggleOn());
       TreeNodeView.contentHidden = true;
+
+      this.updateCollapsedState();
+      console.debug("[ContentHiddenToggleOn] contentHidden set to true");
     }
 
     contentHiddenToggleOff() {
-        if (this.treeNode.isLeaf) {
-          const parent = this.treeNode.parentNode;
-          if (!parent || !parent.isCollapsed) {
-            this.treeNode.isCollapsed = false;
-          }
+      if (this.treeNode.isLeaf) {
+        const parent = this.treeNode.parentNode;
+        const parentCollapsed = parent?.isCollapsed ?? false;
+
+        console.debug("[ContentHiddenToggleOff]", this.treeNode.name, "| isLeaf:", true, "| hasParent:", !!parent, "| parent.isCollapsed:", parentCollapsed);
+
+        if (!parent || !parentCollapsed) {
+          this.treeNode.isCollapsed = false;
+          console.debug("[ContentHiddenToggleOff] → Expanding leaf node:", this.treeNode.name);
         } else {
-          this.treeNode.isCollapsed = true;
+          console.debug("[ContentHiddenToggleOff] → Keeping leaf node collapsed due to collapsed parent:", this.treeNode.name);
         }
-      
-        this.treeNodeViewChildren.forEach(child => child.contentHiddenToggleOff());
-        TreeNodeView.contentHidden = false;
       }
+
+      this.treeNodeViewChildren.forEach(child => child.contentHiddenToggleOff());
+      TreeNodeView.contentHidden = false;
+
+      this.updateCollapsedState();
+      console.debug("[ContentHiddenToggleOff] contentHidden set to false");
+    }
 
     // isLeaf(): boolean {
     //     const childrenContainer = this.treeItem.querySelector(".tree-item-children");
