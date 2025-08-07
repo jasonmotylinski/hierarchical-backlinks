@@ -163,6 +163,19 @@ export class HierarchicalBacklinksView extends ItemView {
             pane.empty();
             const navButtonsViewStub = new NavButtonsView(this.app, pane);
             this.appendLinks(pane, navButtonsViewStub, "Filtered results", this.originalHierarchy);
+
+            // Apply plugin toggleListState to the freshly created treeNodeViews for consistency with createPane()
+            if (this.plugin.toggleListState) {
+                this.treeNodeViews.forEach((n) => n.listToggleOn());
+            } else {
+                this.treeNodeViews.forEach((n) => n.listToggleOff());
+            }
+
+            if (this.plugin.toggleContentState) {
+                this.treeNodeViews.forEach((n) => n.contentHiddenToggleOn());
+            } else {
+                this.treeNodeViews.forEach((n) => n.contentHiddenToggleOff());
+            }
         }
     }
 
@@ -178,21 +191,26 @@ export class HierarchicalBacklinksView extends ItemView {
 
         // If filtering ran, nodes have `isVisible` set for matches and their ancestors.
         // We must prune children that are not visible so descendants don’t appear
-        // just because an ancestor matched.
+        // just because an ancestor matched. Additionally, respect per-node collapsed
+        // state: if a node is collapsed, render the node but not its children.
         const hasVisibility = Array.isArray(links) && links.some((l) => Object.prototype.hasOwnProperty.call(l, "isVisible"));
 
-        const pruneBranch = (nodes: TreeNodeModel[]): TreeNodeModel[] => {
+        const pruneForRender = (nodes: TreeNodeModel[]): TreeNodeModel[] => {
             if (!Array.isArray(nodes)) return [];
             return nodes
+                // When visibility flags exist, only keep visible nodes
                 .filter((n) => !hasVisibility || n.isVisible)
-                .map((n) => ({
-                    ...n,
-                    // Recursively prune children too
-                    children: pruneBranch(n.children ?? [])
-                }));
+                .map((n) => {
+                    const isCollapsed = (n as any).isCollapsed === true || (n as any).collapsed === true;
+                    return {
+                        ...n,
+                        // Respect collapsed state: keep node, but drop children if collapsed
+                        children: isCollapsed ? [] : pruneForRender(n.children ?? [])
+                    } as TreeNodeModel;
+                });
         };
 
-        const linksToRender: TreeNodeModel[] = hasVisibility ? pruneBranch(links) : links;
+        const linksToRender: TreeNodeModel[] = pruneForRender(links);
 
         if(linksToRender.length==0){
             searchResultsContainer.createDiv({cls: "search-empty-state", text: "No backlinks found."})
