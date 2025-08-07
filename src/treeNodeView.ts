@@ -1,7 +1,7 @@
 import { App, setIcon } from "obsidian";
 import { SearchResultFileMatchView } from "./searchResultFileMatchView";
 import { ContentReference} from "./types";
-import { TreeNodeModel } from "./models/TreeNodeModel";
+import { TreeNodeModel } from "./treeNodeModel";
 
 // Set DEBUG flag to true to enable debug logging
 class Logger {

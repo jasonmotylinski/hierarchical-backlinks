@@ -1,4 +1,4 @@
-import type { TreeNode, ContentReference } from "../types";
+import type { TreeNode, ContentReference } from "./types";
 
 export class TreeNodeModel implements TreeNode {
   name: string;
