@@ -14,6 +14,7 @@ export class HierarchicalBacklinksView extends ItemView {
     private treeNodeViews: TreeNodeView[]=[];
     private originalHierarchy: TreeNodeModel[] = [];
     private viewState: ViewState | null = null;
+    private currentNoteId: string | null = null;
     constructor(leaf: WorkspaceLeaf, plugin: HierarchicalBacklinksPlugin){
         super(leaf);
         this.plugin=plugin;
@@ -34,23 +35,32 @@ export class HierarchicalBacklinksView extends ItemView {
     async initialize(){
         const container=this.containerEl.children[1];
         container.empty();
-        const activeFile=this.app.workspace.getActiveFile();
-
-        if(activeFile){
-            const file=new File(this.app, activeFile);
-            const hierarchy=(await file.getBacklinksHierarchy());
-
-            // Initialize shared ViewState once; persist across re-initializations
-            if (!this.viewState) {
-                this.viewState = {
-                    query: "",
-                    listCollapsed: this.plugin.toggleListState,
-                    contentCollapsed: this.plugin.toggleContentState,
-                    nodeStates: new Map<string, NodeViewState>()
-                };
-            }
-
-            this.createPane(container, hierarchy);
+        const activeFile = this.app.workspace.getActiveFile();
+        if (activeFile) {
+          const noteId = activeFile.path; // unique per note
+          const noteChanged = this.currentNoteId !== noteId;
+        
+          if (noteChanged) {
+            // New note → forget previous note's collapse state
+            this.currentNoteId = noteId;
+            this.viewState = {
+              query: "",
+              listCollapsed: this.plugin.toggleListState,
+              contentCollapsed: this.plugin.toggleContentState,
+              nodeStates: new Map<string, NodeViewState>(),
+            };
+          } else if (!this.viewState) {
+            // First init for the session (same note)
+            this.viewState = {
+              query: "",
+              listCollapsed: this.plugin.toggleListState,
+              contentCollapsed: this.plugin.toggleContentState,
+              nodeStates: new Map<string, NodeViewState>(),
+            };
+          }
+          const file = new File(this.app, activeFile);
+          const hierarchy = await file.getBacklinksHierarchy();
+          this.createPane(container, hierarchy);
         }
     }
 
@@ -193,17 +203,17 @@ export class HierarchicalBacklinksView extends ItemView {
             this.appendLinks(pane, navButtonsViewStub, trimmed ? "Filtered results" : "Linked mentions", this.originalHierarchy);
             
             // Apply plugin toggle states to freshly created TreeNodeViews
-            if (this.plugin.toggleListState) {
-                this.treeNodeViews.forEach((n) => n.listToggleOn());
-            } else {
-                this.treeNodeViews.forEach((n) => n.listToggleOff());
-            }
+            // if (this.plugin.toggleListState) {
+            //     this.treeNodeViews.forEach((n) => n.listToggleOn());
+            // } else {
+            //     this.treeNodeViews.forEach((n) => n.listToggleOff());
+            // }
             
-            if (this.plugin.toggleContentState) {
-                this.treeNodeViews.forEach((n) => n.contentHiddenToggleOn());
-            } else {
-                this.treeNodeViews.forEach((n) => n.contentHiddenToggleOff());
-            }
+            // if (this.plugin.toggleContentState) {
+            //     this.treeNodeViews.forEach((n) => n.contentHiddenToggleOn());
+            // } else {
+            //     this.treeNodeViews.forEach((n) => n.contentHiddenToggleOff());
+            // }
         }
     } 
 
@@ -233,13 +243,11 @@ export class HierarchicalBacklinksView extends ItemView {
                 return st ? st.isVisible : true;
               })
               .map((n) => {
-                // DO NOT drop children based on isCollapsed — just pass full tree
-                return {
-                  ...n,
-                  children: pruneForRender(n.children ?? [])
-                } as TreeNodeModel;
+                // Do not prune by `isCollapsed` here; only visibility is applied above.
+                // Keeping children allows expand/uncollapse to work after filtering.
+                return { ...n, children: pruneForRender(n.children ?? []) } as TreeNodeModel;
               });
-          };
+        };
 
         console.debug("[appendLinks] incoming nodes", links.length);
         const linksToRender = pruneForRender(links);

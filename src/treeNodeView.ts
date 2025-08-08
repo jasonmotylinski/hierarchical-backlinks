@@ -49,6 +49,9 @@ export class TreeNodeView{
             treeItemFlair.setText(total.toString());
             this.appendReferences(this.treeItem, this.treeNode, this.treeNode.references);
         }
+
+        // Apply current collapsed state (hide/show children or matches)
+        this.updateCollapsedState();
     }
 
     appendEndNode(parent :HTMLDivElement, treeNode :TreeNodeModel){
@@ -188,7 +191,16 @@ export class TreeNodeView{
     }
 
     updateCollapsedState() {
-        const isCollapsed = this.ensureNodeViewState().isCollapsed;
+        const state = this.ensureNodeViewState();
+        let isCollapsed = state.isCollapsed;
+
+
+        // If no explicit collapse state was stored yet, default collapsed for parents
+        if (!this.viewState.nodeStates.has(this.treeNode.path)) {
+            if (!this.treeNode.isLeaf) {
+                isCollapsed = true; // keep parents collapsed by default
+            }
+        }
       
         this.treeItemSelf.toggleClass("is-collapsed", isCollapsed);
         this.treeItemIcon.toggleClass("is-collapsed", isCollapsed);
