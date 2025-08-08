@@ -15,6 +15,8 @@ export default class HierarchicalBacklinksPlugin extends Plugin {
     settings: HierarchicalBacklinksSettings;
     private _toggleListState: boolean = false;
     private _toggleContentState: boolean = false;
+    private _toggleSearchState: boolean = false;
+    private _toggleSearchQuery: string = "";
   
     get toggleListState(): boolean {
       return this._toggleListState;
@@ -30,6 +32,22 @@ export default class HierarchicalBacklinksPlugin extends Plugin {
   
     set toggleContentState(value: boolean) {
       this._toggleContentState = value;
+    }
+
+    get toggleSearchState(): boolean {
+      return this._toggleSearchState;
+    }
+
+    set toggleSearchState(value: boolean) {
+        this._toggleSearchState = value;
+    }
+
+    get toggleSearchQuery(): string {
+        return this._toggleSearchQuery;
+    }
+    
+    set toggleSearchQuery(value: string) {
+        this._toggleSearchQuery = value;
     }
 
     async onload() {

@@ -48,9 +48,10 @@ async initialize() {
         if (this.currentNoteId !== noteId || !this.viewState) {
           this.currentNoteId = noteId;
           this.viewState = {
-            query: "",
+            query: this.plugin.toggleSearchQuery,
             listCollapsed: this.plugin.toggleListState,
             contentCollapsed: this.plugin.toggleContentState,
+            searchCollapsed: this.plugin.toggleSearchState,
             nodeStates: new Map<string, NodeViewState>(),
           };
         }
@@ -98,23 +99,31 @@ async initialize() {
             }
         });
 
-        // 🔍 Add search bar container (hidden by default; shown when search button is toggled)
+        // Create search container
         const searchContainer = container.createDiv({ cls: "backlink-search-container" });
-        (searchContainer as HTMLElement).style.display = "none"; // start hidden
         const searchInput = searchContainer.createEl("input", {
             type: "text",
             placeholder: "Filter backlinks...",
             cls: "backlink-search-input",
         });
+        // restore query text from viewState
+        searchInput.value = this.viewState?.query ?? "";
 
-        // tie visibility to the nav search toggle button
+        // Restore button & container from viewState
+        const show = this.viewState?.searchCollapsed ?? false;
+        navButtonsView.searchToggleButton.setCollapsed(show);
+        searchContainer.style.display = show ? "" : "none";
+
+        // Handle toggle
         navButtonsView.searchToggleButton.on("collapse-click", () => {
-            const show = navButtonsView.searchToggleButton.isCollapsed();
-            (searchContainer as HTMLElement).style.display = show ? "" : "none";
-            if (show) {
-                (searchInput as HTMLInputElement).focus();
+            const isOn = navButtonsView.searchToggleButton.isCollapsed();
+            this.plugin.toggleSearchState = isOn;
+            this.viewState!.searchCollapsed = isOn;
+            searchContainer.style.display = isOn ? "" : "none";
+            if (isOn) {
+                searchInput.focus();
             } else {
-                (searchInput as HTMLInputElement).value = "";
+                searchInput.value = "";
                 this.filterBacklinks("");
             }
         });
@@ -122,6 +131,8 @@ async initialize() {
         // Add event listener to filter backlinks (you'll implement filter logic later)
         searchInput.addEventListener("input", (e) => {
             const query = (e.target as HTMLInputElement).value.toLowerCase();
+            this.plugin.toggleSearchQuery = query;  // persist globally
+            this.viewState!.query = query;          // persist in local state too
             this.filterBacklinks(query);
         });
 
@@ -149,7 +160,7 @@ async initialize() {
 
         if (!this.viewState) {
             // safety: create a default view state if not present
-            this.viewState = { query: "", listCollapsed: false, contentCollapsed: false, nodeStates: new Map<string, NodeViewState>() };
+            this.viewState = { query: "", listCollapsed: false, contentCollapsed: false, searchCollapsed: false, nodeStates: new Map<string, NodeViewState>() };
         }
         this.viewState.query = trimmed;
 

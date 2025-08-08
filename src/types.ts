@@ -21,6 +21,7 @@ export interface TreeNode {
     query: string;
     listCollapsed: boolean;
     contentCollapsed: boolean;
+    searchCollapsed: boolean;
     nodeStates: Map<NodeId, NodeViewState>;
   }
 
