@@ -3,10 +3,12 @@ import {HierarchicalBacklinksView, VIEW_TYPE} from "./view";
 
 interface HierarchicalBacklinksSettings {
     toggleLeafNodes: boolean;
+    preserveCollapseState: boolean;
 }
 
 const DEFAULT_SETTINGS: HierarchicalBacklinksSettings = {
     toggleLeafNodes: false,
+    preserveCollapseState: true,
 };
 
 export default class HierarchicalBacklinksPlugin extends Plugin {
@@ -97,6 +99,18 @@ export class HierarchicalBacklinksSettingTab extends PluginSettingTab {
                     .setValue(this.plugin.settings.toggleLeafNodes)
                     .onChange(async (value) => {
                         this.plugin.settings.toggleLeafNodes = value;
+                        await this.plugin.saveSettings();
+                    })
+            );
+
+        new Setting(containerEl)
+            .setName("Preserve Collapse State Between Searches")
+            .setDesc("If enabled, collapsed/expanded state of nodes will be preserved when searching within the same note.")
+            .addToggle(toggle =>
+                toggle
+                    .setValue(this.plugin.settings.preserveCollapseState)
+                    .onChange(async (value) => {
+                        this.plugin.settings.preserveCollapseState = value;
                         await this.plugin.saveSettings();
                     })
             );

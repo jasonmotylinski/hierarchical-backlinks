@@ -32,37 +32,28 @@ export class HierarchicalBacklinksView extends ItemView {
         return "Hierarchical backlinks";
     }
 
-    async initialize(){
-        const container=this.containerEl.children[1];
+async initialize() {
+        const container = this.containerEl.children[1];
         container.empty();
+      
         const activeFile = this.app.workspace.getActiveFile();
-        if (activeFile) {
-          const noteId = activeFile.path; // unique per note
-          const noteChanged = this.currentNoteId !== noteId;
-        
-          if (noteChanged) {
-            // New note → forget previous note's collapse state
-            this.currentNoteId = noteId;
-            this.viewState = {
-              query: "",
-              listCollapsed: this.plugin.toggleListState,
-              contentCollapsed: this.plugin.toggleContentState,
-              nodeStates: new Map<string, NodeViewState>(),
-            };
-          } else if (!this.viewState) {
-            // First init for the session (same note)
-            this.viewState = {
-              query: "",
-              listCollapsed: this.plugin.toggleListState,
-              contentCollapsed: this.plugin.toggleContentState,
-              nodeStates: new Map<string, NodeViewState>(),
-            };
-          }
-          const file = new File(this.app, activeFile);
-          const hierarchy = await file.getBacklinksHierarchy();
-          this.createPane(container, hierarchy);
+        if (!activeFile) return;
+      
+        const noteId = activeFile.path;
+        if (this.currentNoteId !== noteId || !this.viewState) {
+          this.currentNoteId = noteId;
+          this.viewState = {
+            query: "",
+            listCollapsed: this.plugin.toggleListState,
+            contentCollapsed: this.plugin.toggleContentState,
+            nodeStates: new Map<string, NodeViewState>(),
+          };
         }
-    }
+      
+        const file = new File(this.app, activeFile);
+        const hierarchy = await file.getBacklinksHierarchy();
+        this.createPane(container, hierarchy);
+      }
 
     createPane(container: Element, hierarchy: TreeNodeModel[]) {
         
@@ -257,7 +248,12 @@ export class HierarchicalBacklinksView extends ItemView {
             searchResultsContainer.createDiv({cls: "search-empty-state", text: "No backlinks found."})
         }else{
             linksToRender.forEach((l) =>{
-                const treeNodeView = new TreeNodeView(this.app, searchResultsContainer, l, this.viewState!);
+                const treeNodeView = new TreeNodeView(
+                    this.app,
+                    searchResultsContainer,
+                    l,
+                    this.viewState!,
+                    this.plugin.settings.preserveCollapseState);
                 treeNodeView.render();
                 this.treeNodeViews.push(treeNodeView);
             });

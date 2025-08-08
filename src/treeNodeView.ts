@@ -23,13 +23,15 @@ export class TreeNodeView{
     private childrenContainer: HTMLDivElement | null = null;
     private matchBlock: HTMLDivElement | null = null;
     private viewState: ViewState;
+    private preserveCollapseState: boolean;
 
-    constructor(app: App, parent: HTMLDivElement, treeNode: TreeNodeModel, viewState: ViewState) {
+    constructor(app: App, parent: HTMLDivElement, treeNode: TreeNodeModel, viewState: ViewState, preserveCollapseState: boolean = true) {
         this.app = app;
         this.parent = parent;
         this.treeNode = treeNode;
         this.treeNodeViewChildren = [];
         this.viewState = viewState;
+        this.preserveCollapseState = preserveCollapseState;
       }
 
     render(){
@@ -81,7 +83,13 @@ export class TreeNodeView{
     appendTreeItemChildren(treeItem:HTMLDivElement, children :TreeNodeModel[]){
         this.childrenContainer=treeItem.createDiv({cls: "tree-item-children"});
         children.forEach((c)=>{ 
-            const treeNodeView = new TreeNodeView(this.app, this.childrenContainer!, c, this.viewState);
+            const treeNodeView = new TreeNodeView(
+                this.app,
+                this.childrenContainer!,
+                c,
+                this.viewState,
+                this.preserveCollapseState
+            );
             treeNodeView.render();
             this.treeNodeViewChildren.push(treeNodeView);
         });
@@ -194,25 +202,40 @@ export class TreeNodeView{
         const state = this.ensureNodeViewState();
         let isCollapsed = state.isCollapsed;
 
+        // Active search?
+        const searchActive = !!this.viewState.query && this.viewState.query.trim().length > 0;
+        const isLeaf = this.treeNode.isLeaf;
 
-        // If no explicit collapse state was stored yet, default collapsed for parents
-        if (!this.viewState.nodeStates.has(this.treeNode.path)) {
-            if (!this.treeNode.isLeaf) {
-                isCollapsed = true; // keep parents collapsed by default
-            }
+        // 1) If preservation is OFF during a search, expand folders (ignore saved collapse)
+        if (!this.preserveCollapseState && searchActive && !isLeaf) {
+            isCollapsed = false;
         }
-      
+
+        // 2) Global toggles as visual overrides
+        if (this.viewState.listCollapsed && !isLeaf) {
+            isCollapsed = true;
+        }
+        if (this.viewState.contentCollapsed && isLeaf) {
+            isCollapsed = true;
+        }
+
+        // 3) Optional default: for new nodes (no stored state) & preserve ON, default parents to collapsed
+        if (this.preserveCollapseState && !this.viewState.nodeStates.has(this.treeNode.path) && !isLeaf) {
+            isCollapsed = true;
+        }
+
+        // Apply visual state
         this.treeItemSelf.toggleClass("is-collapsed", isCollapsed);
         this.treeItemIcon.toggleClass("is-collapsed", isCollapsed);
-      
+
         if (this.childrenContainer) {
-          this.childrenContainer?.style.setProperty("display", isCollapsed ? "none" : "block");
+            this.childrenContainer.style.setProperty("display", isCollapsed ? "none" : "block");
         }
-      
         if (this.matchBlock) {
-          this.matchBlock?.style.setProperty("display", isCollapsed ? "none" : "block");
+            this.matchBlock.style.setProperty("display", isCollapsed ? "none" : "block");
         }
-      
+
+        // Propagate to children
         this.treeNodeViewChildren.forEach(child => child.updateCollapsedState());
     }
 
