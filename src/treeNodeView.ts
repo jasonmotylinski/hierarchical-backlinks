@@ -2,14 +2,9 @@ import { App, setIcon } from "obsidian";
 import { SearchResultFileMatchView } from "./searchResultFileMatchView";
 import { ContentReference, ViewState, NodeViewState, NodeId } from "./types";
 import { TreeNodeModel } from "./treeNodeModel";
+import { Logger } from "./utils/logger";
 
-// Set DEBUG flag to true to enable debug logging
-class Logger {
-  static DEBUG = true;
-  static log(...args: any[]) {
-    if (Logger.DEBUG) console.debug(...args);
-  }
-}
+const ENABLE_LOG = false; // Set to false to disable logging in this file
 
 export class TreeNodeView{
     private app: App;
@@ -121,7 +116,7 @@ export class TreeNodeView{
         
         this.updateCollapsedState();
 
-        Logger.log("[ListToggleOn]", this.treeNode.title, "→ isCollapsed set to:", state.isCollapsed);    }
+        Logger.debug(ENABLE_LOG, "[ListToggleOn]", this.treeNode.title, "→ isCollapsed set to:", state.isCollapsed);    }
 
     listToggleOff() {
 
@@ -139,7 +134,7 @@ export class TreeNodeView{
         
         this.updateCollapsedState();
 
-        Logger.log("[ListToggleOff]", this.treeNode.title, "| isLeaf:", this.treeNode.isLeaf, "| contentCollapsed:", this.viewState.contentCollapsed, "→ isCollapsed set to:", state.isCollapsed);    }
+        Logger.debug(ENABLE_LOG, "[ListToggleOff]", this.treeNode.title, "| isLeaf:", this.treeNode.isLeaf, "| contentCollapsed:", this.viewState.contentCollapsed, "→ isCollapsed set to:", state.isCollapsed);    }
 
     contentHiddenToggleOn() {
 
@@ -149,10 +144,10 @@ export class TreeNodeView{
 
 
         if (this.treeNode.isLeaf) {
-            Logger.log("[ContentHiddenToggleOn]", this.treeNode.title, "| isLeaf:", true, "→ Collapsing");
+            Logger.debug(ENABLE_LOG, "[ContentHiddenToggleOn]", this.treeNode.title, "| isLeaf:", true, "→ Collapsing");
             state.isCollapsed = true;
         } else {
-            Logger.log("[ContentHiddenToggleOn]", this.treeNode.title, "| isLeaf:", false, "→ Skipping collapse");
+            Logger.debug(ENABLE_LOG, "[ContentHiddenToggleOn]", this.treeNode.title, "| isLeaf:", false, "→ Skipping collapse");
         }
 
         this.treeNodeViewChildren.forEach(child => child.contentHiddenToggleOn());
@@ -160,7 +155,7 @@ export class TreeNodeView{
         
         this.updateCollapsedState();
         
-        Logger.log("[ContentHiddenToggleOn] contentCollapsed set to true");
+        Logger.debug(ENABLE_LOG, "[ContentHiddenToggleOn] contentCollapsed set to true");
     }
 
     contentHiddenToggleOff() {
@@ -173,13 +168,13 @@ export class TreeNodeView{
             const parent = this.treeNode.parent;
             const parentCollapsed = parent ? (this.viewState.nodeStates.get(parent.path)?.isCollapsed ?? false) : false;
 
-            Logger.log("[ContentHiddenToggleOff]", this.treeNode.title, "| isLeaf:", true, "| hasParent:", !!parent, "| parent.isCollapsed:", parentCollapsed);
+            Logger.debug(ENABLE_LOG, "[ContentHiddenToggleOff]", this.treeNode.title, "| isLeaf:", true, "| hasParent:", !!parent, "| parent.isCollapsed:", parentCollapsed);
 
             if (!parent || !parentCollapsed) {
                 state.isCollapsed = false;
-                Logger.log("[ContentHiddenToggleOff] → Expanding leaf node:", this.treeNode.title);
+                Logger.debug(ENABLE_LOG, "[ContentHiddenToggleOff] → Expanding leaf node:", this.treeNode.title);
             } else {
-                Logger.log("[ContentHiddenToggleOff] → Keeping leaf node collapsed due to collapsed parent:", this.treeNode.title);
+                Logger.debug(ENABLE_LOG, "[ContentHiddenToggleOff] → Keeping leaf node collapsed due to collapsed parent:", this.treeNode.title);
             }
         }
 
@@ -188,7 +183,7 @@ export class TreeNodeView{
 
         this.updateCollapsedState();
         
-        Logger.log("[ContentHiddenToggleOff] contentCollapsed set to false");
+        Logger.debug(ENABLE_LOG, "[ContentHiddenToggleOff] contentCollapsed set to false");
     }
 
     toggle() {

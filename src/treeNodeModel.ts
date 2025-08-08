@@ -8,6 +8,8 @@ export class TreeNodeModel implements TreeNode {
   references: ContentReference[];
   parent: TreeNodeModel | null;
   isLeaf: boolean;
+  // Optional: frontmatter properties of the underlying file (from Obsidian metadata cache)
+  frontmatter?: Record<string, unknown>;
 
   static contentHidden: boolean = false;
 
@@ -30,5 +32,10 @@ export class TreeNodeModel implements TreeNode {
     for (const child of this.children) {
       child.parent = this;
     }
+  }
+
+  /** Update frontmatter properties when available. */
+  setFrontmatter(fm: Record<string, unknown> | undefined): void {
+    if (fm && typeof fm === "object") this.frontmatter = fm;
   }
 }

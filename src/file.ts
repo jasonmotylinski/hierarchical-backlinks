@@ -50,6 +50,11 @@ export class File {
                         node.isLeaf = isLast;
                         node.parent = r.__node ?? undefined;
                         node.path = parts.slice(0, i + 1).join('/'); // stable NodeId for all nodes
+                        // Enrich leaf nodes with frontmatter from metadata cache
+                        if (isLast) {
+                            const cache = this.app.metadataCache.getFileCache(file);
+                            node.setFrontmatter(cache?.frontmatter as unknown as Record<string, unknown> | undefined);
+                        }
                         //node.path = isLast ? path : ""; // full path only for leaf
                         //node.isVisible = true;
 

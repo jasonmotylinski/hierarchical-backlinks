@@ -5,6 +5,11 @@ import { TreeNodeModel } from "./treeNodeModel";
 import { TreeNodeView } from "./treeNodeView";
 import { NavButtonsView } from "./nav/navButtonsView";
 import { ViewState, NodeViewState } from "./types";
+import { parseSearchQuery } from "./search/parse";
+import { makePredicate } from "./search/evaluate";
+import { Logger } from "./utils/logger";
+
+const ENABLE_LOG = true; // Set to false to disable logging in this file
 
 export const VIEW_TYPE="hierarchical-backlinks";
 
@@ -135,6 +140,11 @@ async initialize() {
         }
         this.viewState.query = trimmed;
 
+        // Build search predicate (bare terms target content by default)
+        const { clauses } = parseSearchQuery(trimmed, "default");
+        const pred = makePredicate(clauses, { defaultKey: "default" });
+        
+
         const ensureState = (path: string): NodeViewState => {
             let s = this.viewState!.nodeStates.get(path);
             if (!s) {
@@ -153,10 +163,11 @@ async initialize() {
         };
 
         const markVisibility = (node: TreeNodeModel): boolean => {
-            const pathSegments = node.path?.toLowerCase().split("/") ?? [];
-            const pathMatch = pathSegments.some(segment => segment.includes(trimmed));
-            const contentMatch = node.content?.toLowerCase().includes(trimmed) ?? false;
-            const isMatch = node.isLeaf && (pathMatch || contentMatch);
+            // const pathSegments = node.path?.toLowerCase().split("/") ?? [];
+            // const pathMatch = pathSegments.some(segment => segment.includes(trimmed));
+            // const contentMatch = node.content?.toLowerCase().includes(trimmed) ?? false;
+            // const isMatch = node.isLeaf && (pathMatch || contentMatch);
+            const isMatch = node.isLeaf && pred(node);
     
             let childrenMatch = false;
 
@@ -170,7 +181,7 @@ async initialize() {
             const state = ensureState(node.path);
             state.isVisible = isMatch || childrenMatch;
 
-            console.debug(`[filterTree] node="${node.path}", isLeaf=${node.isLeaf}, isMatch=${isMatch}, childrenMatches=${childrenMatch}`);
+            Logger.debug(ENABLE_LOG,`[filterTree] node="${node.path}", isLeaf=${node.isLeaf}, isMatch=${isMatch}, childrenMatches=${childrenMatch}`);
             return state.isVisible;
 
         };
