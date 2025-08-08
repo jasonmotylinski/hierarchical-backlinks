@@ -8,6 +8,7 @@ import { ViewState, NodeViewState } from "./types";
 import { parseSearchQuery } from "./search/parse";
 import { makePredicate } from "./search/evaluate";
 import { Logger } from "./utils/logger";
+import { uiState } from "./uiState";
 
 const ENABLE_LOG = true; // Set to false to disable logging in this file
 
@@ -48,10 +49,6 @@ async initialize() {
         if (this.currentNoteId !== noteId || !this.viewState) {
           this.currentNoteId = noteId;
           this.viewState = {
-            query: this.plugin.toggleSearchQuery,
-            listCollapsed: this.plugin.toggleListState,
-            contentCollapsed: this.plugin.toggleContentState,
-            searchCollapsed: this.plugin.toggleSearchState,
             nodeStates: new Map<string, NodeViewState>(),
           };
         }
@@ -67,18 +64,18 @@ async initialize() {
         navButtonsView.render();
 
   
-        navButtonsView.listCollapseButton.setCollapsed(this.plugin.toggleListState);
-        navButtonsView.contentCollapseButton.setCollapsed(this.plugin.toggleContentState);
+        navButtonsView.listCollapseButton.setCollapsed(uiState.listCollapsed);
+        navButtonsView.contentCollapseButton.setCollapsed(uiState.contentCollapsed);
 
 
         navButtonsView.listCollapseButton.on("collapse-click", (e)=> {
             if(navButtonsView.listCollapseButton.isCollapsed()){
-                this.plugin.toggleListState=true;
+                uiState.listCollapsed=true;
                 this.treeNodeViews.forEach((n)=>{
                     n.listToggleOn();
                 });
             }else{
-                this.plugin.toggleListState=false;
+                uiState.listCollapsed=false;
                 this.treeNodeViews.forEach((n)=>{
                     n.listToggleOff();
                 });
@@ -87,12 +84,12 @@ async initialize() {
 
         navButtonsView.contentCollapseButton.on("collapse-click", (e)=> {
             if(navButtonsView.contentCollapseButton.isCollapsed()){
-                this.plugin.toggleContentState=true;
+                uiState.contentCollapsed=true;
                 this.treeNodeViews.forEach((n)=>{
                     n.contentHiddenToggleOn();
                 });
             }else{
-                this.plugin.toggleContentState=false;
+                uiState.contentCollapsed=false;
                 this.treeNodeViews.forEach((n)=>{
                     n.contentHiddenToggleOff();
                 });
@@ -107,18 +104,17 @@ async initialize() {
             cls: "backlink-search-input",
         });
         // restore query text from viewState
-        searchInput.value = this.viewState?.query ?? "";
+        searchInput.value = uiState.query ?? "";
 
         // Restore button & container from viewState
-        const show = this.viewState?.searchCollapsed ?? false;
+        const show = uiState.searchCollapsed ?? false;
         navButtonsView.searchToggleButton.setCollapsed(show);
         searchContainer.style.display = show ? "" : "none";
 
         // Handle toggle
         navButtonsView.searchToggleButton.on("collapse-click", () => {
             const isOn = navButtonsView.searchToggleButton.isCollapsed();
-            this.plugin.toggleSearchState = isOn;
-            this.viewState!.searchCollapsed = isOn;
+            uiState.searchCollapsed = isOn;
             searchContainer.style.display = isOn ? "" : "none";
             if (isOn) {
                 searchInput.focus();
@@ -131,8 +127,7 @@ async initialize() {
         // Add event listener to filter backlinks (you'll implement filter logic later)
         searchInput.addEventListener("input", (e) => {
             const query = (e.target as HTMLInputElement).value.toLowerCase();
-            this.plugin.toggleSearchQuery = query;  // persist globally
-            this.viewState!.query = query;          // persist in local state too
+            uiState.query = query;
             this.filterBacklinks(query);
         });
 
@@ -142,13 +137,13 @@ async initialize() {
         this.originalHierarchy = hierarchy;
 
         // Apply plugin toggle states to the freshly created treeNodeViews
-        if (this.plugin.toggleListState) {
+        if (uiState.listCollapsed) {
             this.treeNodeViews.forEach((n) => n.listToggleOn());
         } else {
             this.treeNodeViews.forEach((n) => n.listToggleOff());
         }
 
-        if (this.plugin.toggleContentState) {
+        if (uiState.contentCollapsed) {
             this.treeNodeViews.forEach((n) => n.contentHiddenToggleOn());
         } else {
             this.treeNodeViews.forEach((n) => n.contentHiddenToggleOff());
@@ -160,9 +155,9 @@ async initialize() {
 
         if (!this.viewState) {
             // safety: create a default view state if not present
-            this.viewState = { query: "", listCollapsed: false, contentCollapsed: false, searchCollapsed: false, nodeStates: new Map<string, NodeViewState>() };
+            this.viewState = { nodeStates: new Map<string, NodeViewState>() };
         }
-        this.viewState.query = trimmed;
+        uiState.query = trimmed;
 
         // Build search predicate (bare terms target content by default)
         const { clauses } = parseSearchQuery(trimmed, "default");
@@ -257,7 +252,7 @@ async initialize() {
         // We must prune children that are not visible so descendants don’t appear
         // just because an ancestor matched. Additionally, respect per-node collapsed
         // state: if a node is collapsed, render the node but not its children.
-        const hasVisibility = !!this.viewState && !!this.viewState.query && this.viewState.query.trim().length > 0;
+        const hasVisibility = !!this.viewState && !!uiState.query && uiState.query.trim().length > 0;
 
         const pruneForRender = (nodes: TreeNodeModel[]): TreeNodeModel[] => {
             if (!Array.isArray(nodes)) return [];

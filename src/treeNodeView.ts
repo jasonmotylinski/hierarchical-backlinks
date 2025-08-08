@@ -3,6 +3,7 @@ import { SearchResultFileMatchView } from "./searchResultFileMatchView";
 import { ContentReference, ViewState, NodeViewState, NodeId } from "./types";
 import { TreeNodeModel } from "./treeNodeModel";
 import { Logger } from "./utils/logger";
+import { uiState } from "./uiState";
 
 const ENABLE_LOG = false; // Set to false to disable logging in this file
 
@@ -108,7 +109,7 @@ export class TreeNodeView{
     listToggleOn() {
         // Always collapse the node when toggling on.
         // Collapse this node and all descendants; also mark the list as collapsed
-        this.viewState.listCollapsed = true;
+        uiState.listCollapsed = true;
         const state = this.ensureNodeViewState();
         state.isCollapsed = true;
 
@@ -116,16 +117,17 @@ export class TreeNodeView{
         
         this.updateCollapsedState();
 
-        Logger.debug(ENABLE_LOG, "[ListToggleOn]", this.treeNode.title, "→ isCollapsed set to:", state.isCollapsed);    }
+        Logger.debug(ENABLE_LOG, "[ListToggleOn]", this.treeNode.title, "→ isCollapsed set to:", state.isCollapsed);    
+    }
 
     listToggleOff() {
 
         // Expand according to contentCollapsed for leaves; parents expand
-        this.viewState.listCollapsed = false;
+        uiState.listCollapsed = false;
         const state = this.ensureNodeViewState();
 
         if (this.treeNode.isLeaf) {
-            state.isCollapsed = this.viewState.contentCollapsed;
+            state.isCollapsed = uiState.contentCollapsed;
         } else {
             state.isCollapsed = false;
         }
@@ -134,12 +136,12 @@ export class TreeNodeView{
         
         this.updateCollapsedState();
 
-        Logger.debug(ENABLE_LOG, "[ListToggleOff]", this.treeNode.title, "| isLeaf:", this.treeNode.isLeaf, "| contentCollapsed:", this.viewState.contentCollapsed, "→ isCollapsed set to:", state.isCollapsed);    }
+        Logger.debug(ENABLE_LOG, "[ListToggleOff]", this.treeNode.title, "| isLeaf:", this.treeNode.isLeaf, "| contentCollapsed:", uiState.contentCollapsed, "→ isCollapsed set to:", state.isCollapsed);    }
 
     contentHiddenToggleOn() {
 
         // When content is hidden, collapse leaf nodes; keep parents as-is
-        this.viewState.contentCollapsed = true;
+        uiState.contentCollapsed = true;
         const state = this.ensureNodeViewState();
 
 
@@ -160,7 +162,7 @@ export class TreeNodeView{
 
     contentHiddenToggleOff() {
 
-        this.viewState.contentCollapsed = false;
+        uiState.contentCollapsed = false;
         const state = this.ensureNodeViewState();
 
 
@@ -198,7 +200,7 @@ export class TreeNodeView{
         let isCollapsed = state.isCollapsed;
 
         // Active search?
-        const searchActive = !!this.viewState.query && this.viewState.query.trim().length > 0;
+        const searchActive = !!uiState.query && uiState.query.trim().length > 0;
         const isLeaf = this.treeNode.isLeaf;
 
         // 1) If preservation is OFF during a search, expand folders (ignore saved collapse)
@@ -207,10 +209,10 @@ export class TreeNodeView{
         }
 
         // 2) Global toggles as visual overrides
-        if (this.viewState.listCollapsed && !isLeaf) {
+        if (uiState.listCollapsed && !isLeaf) {
             isCollapsed = true;
         }
-        if (this.viewState.contentCollapsed && isLeaf) {
+        if (uiState.contentCollapsed && isLeaf) {
             isCollapsed = true;
         }
 

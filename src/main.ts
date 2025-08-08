@@ -1,5 +1,6 @@
 import { Plugin, WorkspaceLeaf, PluginSettingTab, Setting, App } from "obsidian";
 import {HierarchicalBacklinksView, VIEW_TYPE} from "./view";
+import { uiState } from "./uiState";
 
 interface HierarchicalBacklinksSettings {
     toggleLeafNodes: boolean;
@@ -13,61 +14,37 @@ const DEFAULT_SETTINGS: HierarchicalBacklinksSettings = {
 
 export default class HierarchicalBacklinksPlugin extends Plugin {
     settings: HierarchicalBacklinksSettings;
-    private _toggleListState: boolean = false;
-    private _toggleContentState: boolean = false;
-    private _toggleSearchState: boolean = false;
-    private _toggleSearchQuery: string = "";
   
-    get toggleListState(): boolean {
-      return this._toggleListState;
-    }
-  
-    set toggleListState(value: boolean) {
-      this._toggleListState = value;
-    }
-  
-    get toggleContentState(): boolean {
-      return this._toggleContentState;
-    }
-  
-    set toggleContentState(value: boolean) {
-      this._toggleContentState = value;
-    }
-
-    get toggleSearchState(): boolean {
-      return this._toggleSearchState;
-    }
-
-    set toggleSearchState(value: boolean) {
-        this._toggleSearchState = value;
-    }
-
-    get toggleSearchQuery(): string {
-        return this._toggleSearchQuery;
-    }
-    
-    set toggleSearchQuery(value: string) {
-        this._toggleSearchQuery = value;
-    }
-
     async onload() {
-        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+        const data = (await this.loadData()) ?? {};
+      
+        // Load settings (back-compat: old versions stored the settings at root)
+        this.settings = Object.assign({}, DEFAULT_SETTINGS, data.settings ?? data);
+      
+        // Load global UI runtime state (if present)
+        uiState.load(data.ui);
+      
+        // First-run fallback: if there is no persisted UI yet,
+        // honor the "Hide Content by Default" setting for contentCollapsed.
+        if (!data.ui) {
+          uiState.contentCollapsed = this.settings.toggleLeafNodes;
+        }
+      
         this.addSettingTab(new HierarchicalBacklinksSettingTab(this));
-        this.toggleContentState = this.settings.toggleLeafNodes;
-
+      
         this.registerView(
-            VIEW_TYPE,
-            (leaf) => new HierarchicalBacklinksView(leaf, this)
+          VIEW_TYPE,
+          (leaf) => new HierarchicalBacklinksView(leaf, this)
         );
-
+      
         this.addCommand({
-            id: "show-hierarchical-backlinks",
-            name: "Show hierarchical backlinks",
-            callback: () => {
-                this.activateView();
-            },
+          id: "show-hierarchical-backlinks",
+          name: "Show hierarchical backlinks",
+          callback: () => {
+            this.activateView();
+          },
         });
-    }
+      }
 
     async onUserEnable() {
         this.activateView();

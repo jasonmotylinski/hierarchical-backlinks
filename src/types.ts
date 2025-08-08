@@ -18,10 +18,6 @@ export interface TreeNode {
     isVisible: boolean;
   }
   export interface ViewState {
-    query: string;
-    listCollapsed: boolean;
-    contentCollapsed: boolean;
-    searchCollapsed: boolean;
     nodeStates: Map<NodeId, NodeViewState>;
   }
 
