@@ -6,10 +6,8 @@ export class TreeNodeModel implements TreeNode {
   content: string;
   children: TreeNodeModel[];
   references: ContentReference[];
-  isCollapsed: boolean = false;
   parent: TreeNodeModel | null;
   isLeaf: boolean;
-  isVisible: boolean = true;
 
   static contentHidden: boolean = false;
 
@@ -20,7 +18,6 @@ export class TreeNodeModel implements TreeNode {
     children: TreeNodeModel[],
     parent: TreeNodeModel | null,
     isLeaf: boolean,
-    isVisible: boolean = true
   ) {
     this.path = path;
     this.title = path.split("/").pop()?.replace(/\.md$/, "") ?? path;
@@ -29,7 +26,6 @@ export class TreeNodeModel implements TreeNode {
     this.references = references;
     this.isLeaf = isLeaf;
     this.parent = parent;
-    this.isVisible = isVisible;
 
     for (const child of this.children) {
       child.parent = this;

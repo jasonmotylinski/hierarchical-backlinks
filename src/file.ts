@@ -49,8 +49,9 @@ export class File {
                           );
                         node.isLeaf = isLast;
                         node.parent = r.__node ?? undefined;
-                        node.path = isLast ? path : "";             // full path only for leaf
-                        node.isVisible = true;
+                        node.path = parts.slice(0, i + 1).join('/'); // stable NodeId for all nodes
+                        //node.path = isLast ? path : ""; // full path only for leaf
+                        //node.isVisible = true;
 
                         r.result.push(node);
                         r[name].__node = node;

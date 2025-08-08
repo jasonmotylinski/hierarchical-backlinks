@@ -4,6 +4,7 @@ import HierarchicalBacklinksPlugin  from "./main";
 import { TreeNodeModel } from "./treeNodeModel";
 import { TreeNodeView } from "./treeNodeView";
 import { NavButtonsView } from "./nav/navButtonsView";
+import { ViewState, NodeViewState } from "./types";
 
 export const VIEW_TYPE="hierarchical-backlinks";
 
@@ -12,6 +13,7 @@ export class HierarchicalBacklinksView extends ItemView {
     private plugin :HierarchicalBacklinksPlugin;
     private treeNodeViews: TreeNodeView[]=[];
     private originalHierarchy: TreeNodeModel[] = [];
+    private viewState: ViewState | null = null;
     constructor(leaf: WorkspaceLeaf, plugin: HierarchicalBacklinksPlugin){
         super(leaf);
         this.plugin=plugin;
@@ -37,6 +39,17 @@ export class HierarchicalBacklinksView extends ItemView {
         if(activeFile){
             const file=new File(this.app, activeFile);
             const hierarchy=(await file.getBacklinksHierarchy());
+
+            // Initialize shared ViewState once; persist across re-initializations
+            if (!this.viewState) {
+                this.viewState = {
+                    query: "",
+                    listCollapsed: this.plugin.toggleListState,
+                    contentCollapsed: this.plugin.toggleContentState,
+                    nodeStates: new Map<string, NodeViewState>()
+                };
+            }
+
             this.createPane(container, hierarchy);
         }
     }
@@ -115,15 +128,29 @@ export class HierarchicalBacklinksView extends ItemView {
     private filterBacklinks(query: string) {
         const trimmed = query.trim().toLowerCase();
 
+        if (!this.viewState) {
+            // safety: create a default view state if not present
+            this.viewState = { query: "", listCollapsed: false, contentCollapsed: false, nodeStates: new Map<string, NodeViewState>() };
+        }
+        this.viewState.query = trimmed;
+
+        const ensureState = (path: string): NodeViewState => {
+            let s = this.viewState!.nodeStates.get(path);
+            if (!s) {
+                s = { isCollapsed: false, isVisible: true };
+                this.viewState!.nodeStates.set(path, s);
+            }
+            return s;
+        };
+
         const resetVisibility = (node: TreeNodeModel) => {
-            node.isVisible = false;
+            const s = ensureState(node.path);
+            s.isVisible = true;
             for (const child of node.children) {
                 resetVisibility(child);
             }
         };
 
-
-    
         const markVisibility = (node: TreeNodeModel): boolean => {
             const pathSegments = node.path?.toLowerCase().split("/") ?? [];
             const pathMatch = pathSegments.some(segment => segment.includes(trimmed));
@@ -135,25 +162,26 @@ export class HierarchicalBacklinksView extends ItemView {
 
             for (const child of node.children) {
                 const childMatches = markVisibility(child);
-                if (childMatches) {
-                    childrenMatch = true;
-                }
+                if (childMatches) childrenMatch = true;
             }
             
 
-            node.isVisible = isMatch || childrenMatch;
+            const state = ensureState(node.path);
+            state.isVisible = isMatch || childrenMatch;
 
             console.debug(`[filterTree] node="${node.path}", isLeaf=${node.isLeaf}, isMatch=${isMatch}, childrenMatches=${childrenMatch}`);
-            return node.isVisible;
+            return state.isVisible;
 
         };
 
-        for (const node of this.originalHierarchy) {
-            resetVisibility(node);
-        }
-    
-        for (const node of this.originalHierarchy) {
-            markVisibility(node);
+        if (trimmed.length === 0) {
+            for (const node of this.originalHierarchy) {
+                resetVisibility(node);
+            }
+        } else {
+            for (const node of this.originalHierarchy) {
+                markVisibility(node);
+            }
         }
     
         console.debug(`[filterBacklinks] Query: "${trimmed}"`);
@@ -162,22 +190,22 @@ export class HierarchicalBacklinksView extends ItemView {
         if (pane) {
             pane.empty();
             const navButtonsViewStub = new NavButtonsView(this.app, pane);
-            this.appendLinks(pane, navButtonsViewStub, "Filtered results", this.originalHierarchy);
-
-            // Apply plugin toggleListState to the freshly created treeNodeViews for consistency with createPane()
+            this.appendLinks(pane, navButtonsViewStub, trimmed ? "Filtered results" : "Linked mentions", this.originalHierarchy);
+            
+            // Apply plugin toggle states to freshly created TreeNodeViews
             if (this.plugin.toggleListState) {
                 this.treeNodeViews.forEach((n) => n.listToggleOn());
             } else {
                 this.treeNodeViews.forEach((n) => n.listToggleOff());
             }
-
+            
             if (this.plugin.toggleContentState) {
                 this.treeNodeViews.forEach((n) => n.contentHiddenToggleOn());
             } else {
                 this.treeNodeViews.forEach((n) => n.contentHiddenToggleOff());
             }
         }
-    }
+    } 
 
     appendLinks(pane :HTMLDivElement, navButtonsView: NavButtonsView, headerText :string, links: any[]){
         const linksHeader=pane.createDiv({cls: "tree-item-self is-clickable"});
@@ -193,35 +221,40 @@ export class HierarchicalBacklinksView extends ItemView {
         // We must prune children that are not visible so descendants don’t appear
         // just because an ancestor matched. Additionally, respect per-node collapsed
         // state: if a node is collapsed, render the node but not its children.
-        const hasVisibility = Array.isArray(links) && links.some((l) => Object.prototype.hasOwnProperty.call(l, "isVisible"));
+        const hasVisibility = !!this.viewState && !!this.viewState.query && this.viewState.query.trim().length > 0;
 
         const pruneForRender = (nodes: TreeNodeModel[]): TreeNodeModel[] => {
             if (!Array.isArray(nodes)) return [];
             return nodes
-                // When visibility flags exist, only keep visible nodes
-                .filter((n) => !hasVisibility || n.isVisible)
-                .map((n) => {
-                    const isCollapsed = (n as any).isCollapsed === true || (n as any).collapsed === true;
-                    return {
-                        ...n,
-                        // Respect collapsed state: keep node, but drop children if collapsed
-                        children: isCollapsed ? [] : pruneForRender(n.children ?? [])
-                    } as TreeNodeModel;
-                });
-        };
+              .filter((n) => {
+                if (!this.viewState) return true;
+                if (!hasVisibility) return true;
+                const st = this.viewState.nodeStates.get(n.path);
+                return st ? st.isVisible : true;
+              })
+              .map((n) => {
+                // DO NOT drop children based on isCollapsed — just pass full tree
+                return {
+                  ...n,
+                  children: pruneForRender(n.children ?? [])
+                } as TreeNodeModel;
+              });
+          };
 
-        const linksToRender: TreeNodeModel[] = pruneForRender(links);
+        console.debug("[appendLinks] incoming nodes", links.length);
+        const linksToRender = pruneForRender(links);
+        console.debug("[appendLinks] nodes rendered after prune", linksToRender.length);
 
         if(linksToRender.length==0){
             searchResultsContainer.createDiv({cls: "search-empty-state", text: "No backlinks found."})
         }else{
             linksToRender.forEach((l) =>{
-                const treeNodeView=new TreeNodeView(this.app,searchResultsContainer, l);
+                const treeNodeView = new TreeNodeView(this.app, searchResultsContainer, l, this.viewState!);
                 treeNodeView.render();
                 this.treeNodeViews.push(treeNodeView);
             });
         }
-    }
+    } 
 
     register_events(){
         this.plugin.registerEvent(this.app.metadataCache.on("changed", () => {

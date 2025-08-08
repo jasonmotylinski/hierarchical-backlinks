@@ -1,11 +1,11 @@
 import { App, setIcon } from "obsidian";
 import { SearchResultFileMatchView } from "./searchResultFileMatchView";
-import { ContentReference} from "./types";
+import { ContentReference, ViewState, NodeViewState, NodeId } from "./types";
 import { TreeNodeModel } from "./treeNodeModel";
 
 // Set DEBUG flag to true to enable debug logging
 class Logger {
-  static DEBUG = false;
+  static DEBUG = true;
   static log(...args: any[]) {
     if (Logger.DEBUG) console.debug(...args);
   }
@@ -22,12 +22,14 @@ export class TreeNodeView{
     private treeNodeViewChildren: TreeNodeView[];
     private childrenContainer: HTMLDivElement | null = null;
     private matchBlock: HTMLDivElement | null = null;
+    private viewState: ViewState;
 
-    constructor(app: App, parent: HTMLDivElement, treeNode: TreeNodeModel) {
+    constructor(app: App, parent: HTMLDivElement, treeNode: TreeNodeModel, viewState: ViewState) {
         this.app = app;
         this.parent = parent;
         this.treeNode = treeNode;
         this.treeNodeViewChildren = [];
+        this.viewState = viewState;
       }
 
     render(){
@@ -76,7 +78,7 @@ export class TreeNodeView{
     appendTreeItemChildren(treeItem:HTMLDivElement, children :TreeNodeModel[]){
         this.childrenContainer=treeItem.createDiv({cls: "tree-item-children"});
         children.forEach((c)=>{ 
-            const treeNodeView=new TreeNodeView(this.app, this.childrenContainer!, c);
+            const treeNodeView = new TreeNodeView(this.app, this.childrenContainer!, c, this.viewState);
             treeNodeView.render();
             this.treeNodeViewChildren.push(treeNodeView);
         });
@@ -99,32 +101,45 @@ export class TreeNodeView{
 
     listToggleOn() {
         // Always collapse the node when toggling on.
-        this.treeNode.isCollapsed = true;
+        // Collapse this node and all descendants; also mark the list as collapsed
+        this.viewState.listCollapsed = true;
+        const state = this.ensureNodeViewState();
+        state.isCollapsed = true;
+
         this.treeNodeViewChildren.forEach(child => child.listToggleOn());
         
         this.updateCollapsedState();
 
-        Logger.log("[ListToggleOn]", this.treeNode.title, "→ isCollapsed set to:", this.treeNode.isCollapsed);
-    }
+        Logger.log("[ListToggleOn]", this.treeNode.title, "→ isCollapsed set to:", state.isCollapsed);    }
 
     listToggleOff() {
+
+        // Expand according to contentCollapsed for leaves; parents expand
+        this.viewState.listCollapsed = false;
+        const state = this.ensureNodeViewState();
+
         if (this.treeNode.isLeaf) {
-            this.treeNode.isCollapsed = TreeNodeView.contentHidden;
+            state.isCollapsed = this.viewState.contentCollapsed;
         } else {
-            this.treeNode.isCollapsed = false;
+            state.isCollapsed = false;
         }
 
         this.treeNodeViewChildren.forEach(child => child.listToggleOff());
         
         this.updateCollapsedState();
 
-        Logger.log("[ListToggleOff]", this.treeNode.title, "| isLeaf:", this.treeNode.isLeaf, "| contentHidden:", TreeNodeView.contentHidden, "→ isCollapsed set to:", this.treeNode.isCollapsed);
-    }
+        Logger.log("[ListToggleOff]", this.treeNode.title, "| isLeaf:", this.treeNode.isLeaf, "| contentCollapsed:", this.viewState.contentCollapsed, "→ isCollapsed set to:", state.isCollapsed);    }
 
     contentHiddenToggleOn() {
+
+        // When content is hidden, collapse leaf nodes; keep parents as-is
+        this.viewState.contentCollapsed = true;
+        const state = this.ensureNodeViewState();
+
+
         if (this.treeNode.isLeaf) {
             Logger.log("[ContentHiddenToggleOn]", this.treeNode.title, "| isLeaf:", true, "→ Collapsing");
-            this.treeNode.isCollapsed = true;
+            state.isCollapsed = true;
         } else {
             Logger.log("[ContentHiddenToggleOn]", this.treeNode.title, "| isLeaf:", false, "→ Skipping collapse");
         }
@@ -134,18 +149,23 @@ export class TreeNodeView{
         
         this.updateCollapsedState();
         
-        Logger.log("[ContentHiddenToggleOn] contentHidden set to true");
+        Logger.log("[ContentHiddenToggleOn] contentCollapsed set to true");
     }
 
     contentHiddenToggleOff() {
+
+        this.viewState.contentCollapsed = false;
+        const state = this.ensureNodeViewState();
+
+
         if (this.treeNode.isLeaf) {
             const parent = this.treeNode.parent;
-            const parentCollapsed = parent?.isCollapsed ?? false;
+            const parentCollapsed = parent ? (this.viewState.nodeStates.get(parent.path)?.isCollapsed ?? false) : false;
 
             Logger.log("[ContentHiddenToggleOff]", this.treeNode.title, "| isLeaf:", true, "| hasParent:", !!parent, "| parent.isCollapsed:", parentCollapsed);
 
             if (!parent || !parentCollapsed) {
-                this.treeNode.isCollapsed = false;
+                state.isCollapsed = false;
                 Logger.log("[ContentHiddenToggleOff] → Expanding leaf node:", this.treeNode.title);
             } else {
                 Logger.log("[ContentHiddenToggleOff] → Keeping leaf node collapsed due to collapsed parent:", this.treeNode.title);
@@ -157,17 +177,18 @@ export class TreeNodeView{
 
         this.updateCollapsedState();
         
-        Logger.log("[ContentHiddenToggleOff] contentHidden set to false");
+        Logger.log("[ContentHiddenToggleOff] contentCollapsed set to false");
     }
 
     toggle() {
-        this.treeNode.isCollapsed = !this.treeNode.isCollapsed;
+        const state = this.ensureNodeViewState();
+        state.isCollapsed = !state.isCollapsed;
         
         this.updateCollapsedState();
     }
 
     updateCollapsedState() {
-        const isCollapsed = this.treeNode.isCollapsed;
+        const isCollapsed = this.ensureNodeViewState().isCollapsed;
       
         this.treeItemSelf.toggleClass("is-collapsed", isCollapsed);
         this.treeItemIcon.toggleClass("is-collapsed", isCollapsed);
@@ -181,6 +202,24 @@ export class TreeNodeView{
         }
       
         this.treeNodeViewChildren.forEach(child => child.updateCollapsedState());
+    }
+
+    get isCollapsed(): boolean {
+        return this.ensureNodeViewState().isCollapsed;
+    }   
+
+    get treeNodeModel(): TreeNodeModel {
+        return this.treeNode;
+    }
+
+    private ensureNodeViewState(): NodeViewState {
+        const id: NodeId = this.treeNode.path;
+        let state = this.viewState.nodeStates.get(id);
+        if (!state) {
+            state = { isCollapsed: false, isVisible: true };
+            this.viewState.nodeStates.set(id, state);
+        }
+        return state;
     }
 
 }
