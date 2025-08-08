@@ -9,6 +9,7 @@ import { parseSearchQuery } from "./search/parse";
 import { makePredicate } from "./search/evaluate";
 import { Logger } from "./utils/logger";
 import { uiState } from "./uiState";
+import { SearchBar } from "./nav/searchBar";
 
 const ENABLE_LOG = true; // Set to false to disable logging in this file
 
@@ -39,104 +40,118 @@ export class HierarchicalBacklinksView extends ItemView {
     }
 
 async initialize() {
-        const container = this.containerEl.children[1];
-        container.empty();
-      
-        const activeFile = this.app.workspace.getActiveFile();
-        if (!activeFile) return;
-      
-        const noteId = activeFile.path;
-        if (this.currentNoteId !== noteId || !this.viewState) {
-          this.currentNoteId = noteId;
-          this.viewState = {
-            nodeStates: new Map<string, NodeViewState>(),
-          };
-        }
-      
-        const file = new File(this.app, activeFile);
-        const hierarchy = await file.getBacklinksHierarchy();
-        this.createPane(container, hierarchy);
-      }
+    const container = this.containerEl.children[1] as HTMLElement; // .view-content
+    container.empty();
+
+    // Make .view-content a non-scrolling flex column so inner pane controls scrolling
+    const containerDiv = container as HTMLDivElement;
+    containerDiv.style.display = "flex";
+    containerDiv.style.flexDirection = "column";
+    containerDiv.style.height = "100%";
+    containerDiv.style.overflow = "hidden";
+    
+    const activeFile = this.app.workspace.getActiveFile();
+    if (!activeFile) return;
+    const noteId = activeFile.path;
+    if (this.currentNoteId !== noteId || !this.viewState) {
+      this.currentNoteId = noteId;
+      this.viewState = {
+        nodeStates: new Map<string, NodeViewState>(),
+      };
+    }
+    const file = new File(this.app, activeFile);
+    const hierarchy = await file.getBacklinksHierarchy();
+    this.createPane(container, hierarchy);
+}
 
     createPane(container: Element, hierarchy: TreeNodeModel[]) {
-        
-        const navButtonsView=new NavButtonsView(this.app, container);
-        navButtonsView.render();
+        // Make the root content area a flex column and prevent it from scrolling
+        const root = container as HTMLDivElement;
+        root.style.display = "flex";
+        root.style.flexDirection = "column";
+        root.style.height = "100%";
+        root.style.overflow = "hidden"; // prevent the outer view-content from scrolling
 
-  
+        // Header (nav buttons + search), rendered OUTSIDE the scroll area
+        const headerWrapper = root.createDiv();
+        const navButtonsView = new NavButtonsView(this.app, headerWrapper);
+        navButtonsView.render();
+        const headerEl = (headerWrapper.querySelector('.nav-header') as HTMLDivElement) || (headerWrapper as HTMLDivElement);
+
         navButtonsView.listCollapseButton.setCollapsed(uiState.listCollapsed);
         navButtonsView.contentCollapseButton.setCollapsed(uiState.contentCollapsed);
 
-
-        navButtonsView.listCollapseButton.on("collapse-click", (e)=> {
-            if(navButtonsView.listCollapseButton.isCollapsed()){
-                uiState.listCollapsed=true;
-                this.treeNodeViews.forEach((n)=>{
-                    n.listToggleOn();
-                });
-            }else{
-                uiState.listCollapsed=false;
-                this.treeNodeViews.forEach((n)=>{
-                    n.listToggleOff();
-                });
+        navButtonsView.listCollapseButton.on("collapse-click", () => {
+            if (navButtonsView.listCollapseButton.isCollapsed()) {
+                uiState.listCollapsed = true;
+                this.treeNodeViews.forEach((n) => n.listToggleOn());
+            } else {
+                uiState.listCollapsed = false;
+                this.treeNodeViews.forEach((n) => n.listToggleOff());
             }
         });
 
-        navButtonsView.contentCollapseButton.on("collapse-click", (e)=> {
-            if(navButtonsView.contentCollapseButton.isCollapsed()){
-                uiState.contentCollapsed=true;
-                this.treeNodeViews.forEach((n)=>{
-                    n.contentHiddenToggleOn();
-                });
-            }else{
-                uiState.contentCollapsed=false;
-                this.treeNodeViews.forEach((n)=>{
-                    n.contentHiddenToggleOff();
-                });
+        navButtonsView.contentCollapseButton.on("collapse-click", () => {
+            if (navButtonsView.contentCollapseButton.isCollapsed()) {
+                uiState.contentCollapsed = true;
+                this.treeNodeViews.forEach((n) => n.contentHiddenToggleOn());
+            } else {
+                uiState.contentCollapsed = false;
+                this.treeNodeViews.forEach((n) => n.contentHiddenToggleOff());
             }
         });
 
-        // Create search container
-        const searchContainer = container.createDiv({ cls: "backlink-search-container" });
-        const searchInput = searchContainer.createEl("input", {
-            type: "text",
-            placeholder: "Filter backlinks...",
-            cls: "backlink-search-input",
-        });
-        // restore query text from viewState
-        searchInput.value = uiState.query ?? "";
+        // Search bar lives inside the header
+        const searchBar = new SearchBar(headerEl, "Search...");
+        searchBar.setValue(uiState.query ?? "");
 
-        // Restore button & container from viewState
         const show = uiState.searchCollapsed ?? false;
         navButtonsView.searchToggleButton.setCollapsed(show);
-        searchContainer.style.display = show ? "" : "none";
+        searchBar.containerEl.style.display = show ? "" : "none";
 
-        // Handle toggle
         navButtonsView.searchToggleButton.on("collapse-click", () => {
             const isOn = navButtonsView.searchToggleButton.isCollapsed();
             uiState.searchCollapsed = isOn;
-            searchContainer.style.display = isOn ? "" : "none";
+            searchBar.containerEl.style.display = isOn ? "" : "none";
             if (isOn) {
-                searchInput.focus();
+                const inp = searchBar.containerEl.querySelector("input") as HTMLInputElement | null;
+                inp?.focus();
             } else {
-                searchInput.value = "";
-                this.filterBacklinks("");
+                searchBar.setValue("");
+                uiState.query = "";
             }
         });
 
-        // Add event listener to filter backlinks (you'll implement filter logic later)
-        searchInput.addEventListener("input", (e) => {
-            const query = (e.target as HTMLInputElement).value.toLowerCase();
-            uiState.query = query;
-            this.filterBacklinks(query);
+        searchBar.onChange((value) => {
+            const q = value.toLowerCase();
+            uiState.query = q;
+            this.filterBacklinks(q);
         });
 
-        const pane=container.createDiv({cls: "backlink-pane"});
-        this.appendLinks(pane, navButtonsView,"Linked mentions", hierarchy);
+        // Backlink pane (acts as a container for the header inside the pane + the scroll area)
+        const pane = root.createDiv({ cls: "backlink-pane node-insert-event" });
+        const paneDiv = pane as HTMLDivElement;
+        paneDiv.style.position = "relative";
+        paneDiv.style.display = "flex";
+        paneDiv.style.flexDirection = "column";
+        paneDiv.style.flex = "1 1 auto"; // fill remaining height under the header
+
+        // Static header INSIDE the pane, above the scroll container
+        const linkedHeader = paneDiv.createDiv({ cls: "tree-item-self is-clickable" });
+        linkedHeader.createEl("div", { text: "Linked mentions" });
+
+        // Scroll container that holds the results only
+        const scrollContainer = paneDiv.createDiv({ cls: "search-result-container" });
+        const scDiv = scrollContainer as HTMLDivElement;
+        scDiv.style.flex = "1 1 auto";
+        scDiv.style.overflow = "auto"; // <-- only this area scrolls
+
+        // Render nodes into the scroll container
+        this.appendLinks(scDiv, hierarchy);
 
         this.originalHierarchy = hierarchy;
 
-        // Apply plugin toggle states to the freshly created treeNodeViews
+        // Apply toggles on freshly created nodes
         if (uiState.listCollapsed) {
             this.treeNodeViews.forEach((n) => n.listToggleOn());
         } else {
@@ -227,13 +242,7 @@ async initialize() {
         }
     } 
 
-    appendLinks(pane :HTMLDivElement, navButtonsView: NavButtonsView, headerText :string, links: any[]){
-        const linksHeader=pane.createDiv({cls: "tree-item-self is-clickable"});
-        linksHeader.createEl("div",{text: headerText});
-        pane.appendChild(linksHeader);
-
-        const searchResultsContainer=pane.createDiv({cls: "search-result-container"});
-
+    appendLinks(containerEl :HTMLDivElement, links: any[]){
         // Clear stale view references before re-rendering
         this.treeNodeViews = [];
 
@@ -243,12 +252,12 @@ async initialize() {
         Logger.debug(ENABLE_LOG, "[appendLinks] nodes rendered (no prune)", linksToRender.length);
 
         if(linksToRender.length==0){
-            searchResultsContainer.createDiv({cls: "search-empty-state", text: "No backlinks found."})
+            containerEl.createDiv({cls: "search-empty-state", text: "No backlinks found."})
         }else{
             linksToRender.forEach((l) =>{
                 const treeNodeView = new TreeNodeView(
                     this.app,
-                    searchResultsContainer,
+                    containerEl,
                     l,
                     this.viewState!,
                     this.plugin.settings.preserveCollapseState);

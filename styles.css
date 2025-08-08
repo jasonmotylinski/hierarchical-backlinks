@@ -16,14 +16,3 @@ If your plugin does not need CSS, delete this file.
 .view-content {
     padding: 0px !important;
 }
-
-.backlink-search-container {
-    margin: 8px 0;
-}
-
-.backlink-search-input {
-    width: 100%;
-    padding: 4px 8px;
-    font-size: 0.9em;
-    box-sizing: border-box;
-}
