@@ -98,12 +98,25 @@ async initialize() {
             }
         });
 
-        // 🔍 Add search bar container
+        // 🔍 Add search bar container (hidden by default; shown when search button is toggled)
         const searchContainer = container.createDiv({ cls: "backlink-search-container" });
+        (searchContainer as HTMLElement).style.display = "none"; // start hidden
         const searchInput = searchContainer.createEl("input", {
             type: "text",
             placeholder: "Filter backlinks...",
             cls: "backlink-search-input",
+        });
+
+        // tie visibility to the nav search toggle button
+        navButtonsView.searchToggleButton.on("collapse-click", () => {
+            const show = navButtonsView.searchToggleButton.isCollapsed();
+            (searchContainer as HTMLElement).style.display = show ? "" : "none";
+            if (show) {
+                (searchInput as HTMLInputElement).focus();
+            } else {
+                (searchInput as HTMLInputElement).value = "";
+                this.filterBacklinks("");
+            }
         });
 
         // Add event listener to filter backlinks (you'll implement filter logic later)
