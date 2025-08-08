@@ -148,6 +148,10 @@ async initialize() {
         } else {
             this.treeNodeViews.forEach((n) => n.contentHiddenToggleOff());
         }
+
+        if (uiState.query && uiState.query.trim().length > 0) {
+            this.filterBacklinks(uiState.query);
+        }
     }
 
     private filterBacklinks(query: string) {
@@ -216,25 +220,10 @@ async initialize() {
         }
     
         console.debug(`[filterBacklinks] Query: "${trimmed}"`);
-    
-        const pane = this.containerEl.querySelector(".backlink-pane") as HTMLDivElement;
-        if (pane) {
-            pane.empty();
-            const navButtonsViewStub = new NavButtonsView(this.app, pane);
-            this.appendLinks(pane, navButtonsViewStub, trimmed ? "Filtered results" : "Linked mentions", this.originalHierarchy);
-            
-            // Apply plugin toggle states to freshly created TreeNodeViews
-            // if (this.plugin.toggleListState) {
-            //     this.treeNodeViews.forEach((n) => n.listToggleOn());
-            // } else {
-            //     this.treeNodeViews.forEach((n) => n.listToggleOff());
-            // }
-            
-            // if (this.plugin.toggleContentState) {
-            //     this.treeNodeViews.forEach((n) => n.contentHiddenToggleOn());
-            // } else {
-            //     this.treeNodeViews.forEach((n) => n.contentHiddenToggleOff());
-            // }
+
+        // Update visibility of treeNodeViews in-place
+        for (const treeNodeView of this.treeNodeViews) {
+            treeNodeView.updateCollapsedState();
         }
     } 
 
@@ -248,31 +237,10 @@ async initialize() {
         // Clear stale view references before re-rendering
         this.treeNodeViews = [];
 
-        // If filtering ran, nodes have `isVisible` set for matches and their ancestors.
-        // We must prune children that are not visible so descendants don’t appear
-        // just because an ancestor matched. Additionally, respect per-node collapsed
-        // state: if a node is collapsed, render the node but not its children.
-        const hasVisibility = !!this.viewState && !!uiState.query && uiState.query.trim().length > 0;
+        const linksToRender = links as TreeNodeModel[];
 
-        const pruneForRender = (nodes: TreeNodeModel[]): TreeNodeModel[] => {
-            if (!Array.isArray(nodes)) return [];
-            return nodes
-              .filter((n) => {
-                if (!this.viewState) return true;
-                if (!hasVisibility) return true;
-                const st = this.viewState.nodeStates.get(n.path);
-                return st ? st.isVisible : true;
-              })
-              .map((n) => {
-                // Do not prune by `isCollapsed` here; only visibility is applied above.
-                // Keeping children allows expand/uncollapse to work after filtering.
-                return { ...n, children: pruneForRender(n.children ?? []) } as TreeNodeModel;
-              });
-        };
-
-        console.debug("[appendLinks] incoming nodes", links.length);
-        const linksToRender = pruneForRender(links);
-        console.debug("[appendLinks] nodes rendered after prune", linksToRender.length);
+        Logger.debug(ENABLE_LOG, "[appendLinks] incoming nodes", links.length);
+        Logger.debug(ENABLE_LOG, "[appendLinks] nodes rendered (no prune)", linksToRender.length);
 
         if(linksToRender.length==0){
             searchResultsContainer.createDiv({cls: "search-empty-state", text: "No backlinks found."})

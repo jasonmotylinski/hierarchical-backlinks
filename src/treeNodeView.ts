@@ -19,7 +19,6 @@ export class TreeNodeView{
     private childrenContainer: HTMLDivElement | null = null;
     private matchBlock: HTMLDivElement | null = null;
     private viewState: ViewState;
-    private preserveCollapseState: boolean;
 
     constructor(app: App, parent: HTMLDivElement, treeNode: TreeNodeModel, viewState: ViewState, preserveCollapseState: boolean = true) {
         this.app = app;
@@ -27,7 +26,6 @@ export class TreeNodeView{
         this.treeNode = treeNode;
         this.treeNodeViewChildren = [];
         this.viewState = viewState;
-        this.preserveCollapseState = preserveCollapseState;
       }
 
     render(){
@@ -84,7 +82,6 @@ export class TreeNodeView{
                 this.childrenContainer!,
                 c,
                 this.viewState,
-                this.preserveCollapseState
             );
             treeNodeView.render();
             this.treeNodeViewChildren.push(treeNodeView);
@@ -199,26 +196,12 @@ export class TreeNodeView{
         const state = this.ensureNodeViewState();
         let isCollapsed = state.isCollapsed;
 
-        // Active search?
-        const searchActive = !!uiState.query && uiState.query.trim().length > 0;
-        const isLeaf = this.treeNode.isLeaf;
-
-        // 1) If preservation is OFF during a search, expand folders (ignore saved collapse)
-        if (!this.preserveCollapseState && searchActive && !isLeaf) {
-            isCollapsed = false;
-        }
-
-        // 2) Global toggles as visual overrides
-        if (uiState.listCollapsed && !isLeaf) {
-            isCollapsed = true;
-        }
-        if (uiState.contentCollapsed && isLeaf) {
-            isCollapsed = true;
-        }
-
-        // 3) Optional default: for new nodes (no stored state) & preserve ON, default parents to collapsed
-        if (this.preserveCollapseState && !this.viewState.nodeStates.has(this.treeNode.path) && !isLeaf) {
-            isCollapsed = true;
+        // NEW: if the node is not visible, hide it and skip collapse logic
+        if (!state.isVisible) {
+            this.treeItem.style.display = "none";
+            return;
+        } else {
+            this.treeItem.style.display = "";
         }
 
         // Apply visual state
