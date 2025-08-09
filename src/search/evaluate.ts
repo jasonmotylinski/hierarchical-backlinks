@@ -1,7 +1,7 @@
 // src/search/eval.ts
 import type { Clause, Term } from "./parse";
 import { parseSearchQuery } from "./parse";
-import type { TreeNodeModel } from "../treeNodeModel";
+import type { TreeNode } from "../treeNode";
 import { Logger } from "./../utils/logger";
 const ENABLE_LOG = true; // Set to false to disable logging in this file 
 
@@ -43,7 +43,7 @@ export function makePredicate(clauses: Clause[], opts?: { defaultKey?: string })
     );
   };
 
-  const testTerm = (node: TreeNodeModel, term: Term): boolean => {
+  const testTerm = (node: TreeNode, term: Term): boolean => {
     const key = term.key === "default" ? defKey : term.key;
     const v = term.value;
     let ok = true;
@@ -81,6 +81,6 @@ export function makePredicate(clauses: Clause[], opts?: { defaultKey?: string })
     return term.neg ? !ok : ok;
   };
 
-  return (node: TreeNodeModel) =>
+  return (node: TreeNode) =>
     clauses.length === 0 || clauses.some((clause) => clause.every((t) => testTerm(node, t)));
 }

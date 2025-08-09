@@ -1,11 +1,11 @@
 import { SearchMatches } from "obsidian";
-import { TreeNodeModel } from "./treeNodeModel";
+import { TreeNode } from "./treeNode";
 import { TreeNodeView } from "./treeNodeView";
 
 export type NodeId = string; // Node path used as unique identifier
 
-// Implemented in TreeNodeModel
-export interface TreeNode {
+// Implemented in TreeNode
+export interface TreeNodeData {
   path: string;
   title: string;
   content: string;
@@ -23,8 +23,8 @@ export interface ViewState {
   nodeStates: Map<NodeId, NodeViewState>;
 }
 
-export interface BacklinksLayoutCallbacks {
-  createTreeNodeView: (containerEl: HTMLDivElement, node: TreeNodeModel) => TreeNodeView;
+export interface BacklinksLayoutHandlers {
+  createTreeNodeView: (containerEl: HTMLDivElement, node: TreeNode) => TreeNodeView;
   onListToggle: (collapsed: boolean) => void;
   onContentToggle: (collapsed: boolean) => void;
   onSearchChange: (query: string) => void;

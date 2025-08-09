@@ -1,12 +1,12 @@
-import type { TreeNode, ContentReference } from "./types";
+import type { TreeNodeData, ContentReference } from "./types";
 
-export class TreeNodeModel implements TreeNode {
+export class TreeNode implements TreeNodeData {
   path: string;
   title: string;
   content: string;
-  children: TreeNodeModel[];
+  children: TreeNode[];
   references: ContentReference[];
-  parent: TreeNodeModel | null;
+  parent: TreeNode | null;
   isLeaf: boolean;
   // Optional: frontmatter properties of the underlying file (from Obsidian metadata cache)
   frontmatter?: Record<string, unknown>;
@@ -17,8 +17,8 @@ export class TreeNodeModel implements TreeNode {
     path: string,
     content: string,
     references: ContentReference[],
-    children: TreeNodeModel[],
-    parent: TreeNodeModel | null,
+    children: TreeNode[],
+    parent: TreeNode | null,
     isLeaf: boolean,
   ) {
     this.path = path;

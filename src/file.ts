@@ -1,6 +1,6 @@
 import { App, TFile, SearchMatchPart } from "obsidian";
 import { BacklinkReference, ContentReference } from "./types";
-import { TreeNodeModel } from "./treeNodeModel";
+import { TreeNode } from "./treeNode";
 
 
 export class File {
@@ -20,8 +20,8 @@ export class File {
         return backlinks;
     }
     
-    async getBacklinksHierarchy(): Promise<TreeNodeModel[]> {
-        const result: TreeNodeModel[] = [];
+    async getBacklinksHierarchy(): Promise<TreeNode[]> {
+        const result: TreeNode[] = [];
         const level: Record<string, any> = { result };
         const backlinks = this.getBacklinks();
 
@@ -39,7 +39,7 @@ export class File {
                         r[name] = { result: [] };
 
                         const isLast = i === parts.length - 1;
-                        const node = new TreeNodeModel(
+                        const node = new TreeNode(
                             name,
                             isLast ? content : "",
                             isLast ? references : [],

@@ -1,11 +1,11 @@
 import { App } from "obsidian";
 import { NavButtonsView } from "../nav/navButtonsView";
 import { SearchBar } from "../nav/searchBar";
-import { TreeNodeModel } from "../treeNodeModel";
+import { TreeNode } from "../treeNode";
 import { TreeNodeView } from "../treeNodeView";
 import { uiState } from "./uiState";
 import { Logger } from "../utils/logger";
-import type { BacklinksLayoutCallbacks } from "./../types";
+import type { BacklinksLayoutHandlers } from "./../types";
 
 const ENABLE_LOG = false;
 
@@ -13,7 +13,7 @@ export class BacklinksLayout {
     constructor(private app: App) { }
 
     private rootContainerEl: HTMLDivElement | null = null;
-    private roots: TreeNodeModel[] = [];
+    private roots: TreeNode[] = [];
     private rootWrappers: Map<string, HTMLElement> = new Map();
 
     /**
@@ -28,8 +28,8 @@ export class BacklinksLayout {
      */
     mount(
         container: HTMLElement,
-        hierarchy: TreeNodeModel[],
-        callbacks: BacklinksLayoutCallbacks
+        hierarchy: TreeNode[],
+        callbacks: BacklinksLayoutHandlers
     ): {
         treeNodeViews: TreeNodeView[];
         elements: {

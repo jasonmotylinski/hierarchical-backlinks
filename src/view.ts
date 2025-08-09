@@ -1,7 +1,7 @@
 import { ItemView, WorkspaceLeaf } from "obsidian";
 import { File } from "./file";
 import HierarchicalBacklinksPlugin from "./main";
-import { TreeNodeModel } from "./treeNodeModel";
+import { TreeNode } from "./treeNode";
 import { TreeNodeView } from "./treeNodeView";
 import { ViewState, NodeViewState } from "./types";
 import { parseSearchQuery } from "./search/parse";
@@ -19,13 +19,13 @@ export const VIEW_TYPE = "hierarchical-backlinks";
 export class HierarchicalBacklinksView extends ItemView {
     private plugin: HierarchicalBacklinksPlugin;
     private treeNodeViews: TreeNodeView[] = [];
-    private originalHierarchy: TreeNodeModel[] = [];
+    private originalHierarchy: TreeNode[] = [];
     private viewState: ViewState | null = null;
     private currentNoteId: string | null = null;
     private sortDescending: boolean = false;
     private layout: BacklinksLayout | null = null;
     private isFlattened: boolean = false;
-    private flattenedHierarchy: TreeNodeModel[] = [];
+    private flattenedHierarchy: TreeNode[] = [];
     private _isSortRestore: boolean = false;
     private _sortSnapshot?: Map<string, { isCollapsed: boolean; isVisible: boolean }>;
     constructor(leaf: WorkspaceLeaf, plugin: HierarchicalBacklinksPlugin) {
@@ -74,7 +74,7 @@ export class HierarchicalBacklinksView extends ItemView {
         this.updateSortOrder(this.sortDescending);
     }
 
-    createPane(container: Element, hierarchy: TreeNodeModel[]) {
+    createPane(container: Element, hierarchy: TreeNode[]) {
         Logger.debug(ENABLE_LOG_SORT, `[createPane] rendering with ${hierarchy.length} root nodes`);
         Logger.debug(ENABLE_LOG_SORT, "[createPane] START: resetting collected views");
         // Delegate all layout/DOM work to BacklinksLayout
@@ -125,7 +125,7 @@ export class HierarchicalBacklinksView extends ItemView {
             initialFlattened: this.isFlattened,
         });
         Logger.debug(ENABLE_LOG_SORT, "[createPane] layout.mount finished; collected views:", this.treeNodeViews.length);
-        Logger.debug(ENABLE_LOG_SORT, "[createPane] collected node paths:", this.treeNodeViews.map(v => v.treeNodeModel.path));
+        Logger.debug(ENABLE_LOG_SORT, "[createPane] collected node paths:", this.treeNodeViews.map(v => v.TreeNode.path));
 
         // === SORT RESTORE (special path) ============================================
         if (this._isSortRestore && this._sortSnapshot) {
@@ -194,7 +194,7 @@ export class HierarchicalBacklinksView extends ItemView {
         if (this.isFlattened) {
             // Rebuild flattened list, sort (shallow), and remount
             const leaves = this.buildFlattenedHierarchy(this.originalHierarchy);
-            const nameOf = (n: TreeNodeModel) => (n.path?.split("/").pop() ?? "").toLowerCase();
+            const nameOf = (n: TreeNode) => (n.path?.split("/").pop() ?? "").toLowerCase();
             leaves.sort((a, b) =>
                 descending ? nameOf(b).localeCompare(nameOf(a)) : nameOf(a).localeCompare(nameOf(b))
             );
@@ -236,7 +236,7 @@ export class HierarchicalBacklinksView extends ItemView {
             return s;
         };
 
-        const resetVisibility = (node: TreeNodeModel) => {
+        const resetVisibility = (node: TreeNode) => {
             const s = ensureState(node.path);
             s.isVisible = true;
             for (const child of node.children) {
@@ -244,7 +244,7 @@ export class HierarchicalBacklinksView extends ItemView {
             }
         };
 
-        const markVisibility = (node: TreeNodeModel): boolean => {
+        const markVisibility = (node: TreeNode): boolean => {
             // const pathSegments = node.path?.toLowerCase().split("/") ?? [];
             // const pathMatch = pathSegments.some(segment => segment.includes(trimmed));
             // const contentMatch = node.content?.toLowerCase().includes(trimmed) ?? false;
@@ -278,7 +278,6 @@ export class HierarchicalBacklinksView extends ItemView {
             }
         }
 
-        //console.debug(`[filterBacklinks] Query: "${trimmed}"`);
         Logger.debug(ENABLE_LOG_FILTER, `[filterBacklinks] Query: "${trimmed}"`);
 
         // Update visibility of treeNodeViews in-place (roots only; method recurses into children)
@@ -308,7 +307,7 @@ export class HierarchicalBacklinksView extends ItemView {
     }
 
     /** Deep clone the hierarchy so we can sort without mutating originals */
-    private cloneHierarchy(nodes: TreeNodeModel[]): TreeNodeModel[] {
+    private cloneHierarchy(nodes: TreeNode[]): TreeNode[] {
         return nodes.map((n) => ({
             ...n,
             // recursively clone children
@@ -318,9 +317,9 @@ export class HierarchicalBacklinksView extends ItemView {
     }
 
     /** Recursively sort nodes by the leaf name of their path (A→Z or Z→A). */
-    private deepSortHierarchy(models: TreeNodeModel[], descending: boolean): void {
-        const nameOf = (n: TreeNodeModel) => (n.path?.split("/").pop() ?? "").toLowerCase();
-        const cmp = (a: TreeNodeModel, b: TreeNodeModel) =>
+    private deepSortHierarchy(models: TreeNode[], descending: boolean): void {
+        const nameOf = (n: TreeNode) => (n.path?.split("/").pop() ?? "").toLowerCase();
+        const cmp = (a: TreeNode, b: TreeNode) =>
             descending ? nameOf(b).localeCompare(nameOf(a)) : nameOf(a).localeCompare(nameOf(b));
 
         models.sort(cmp);
@@ -335,10 +334,10 @@ export class HierarchicalBacklinksView extends ItemView {
      * Build a flat list of leaf nodes from a hierarchical tree.
      * Preserves node identity (path) so viewState (isVisible/isCollapsed) continues to apply.
      */
-    private buildFlattenedHierarchy(hierarchy: TreeNodeModel[]): TreeNodeModel[] {
-        const leaves: TreeNodeModel[] = [];
+    private buildFlattenedHierarchy(hierarchy: TreeNode[]): TreeNode[] {
+        const leaves: TreeNode[] = [];
 
-        const walk = (node: TreeNodeModel) => {
+        const walk = (node: TreeNode) => {
             if (node.isLeaf) {
                 // clone the node but drop children to ensure it's rendered as a root leaf
                 leaves.push({

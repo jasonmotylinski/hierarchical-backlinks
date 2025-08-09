@@ -1,7 +1,7 @@
 import { App, setIcon } from "obsidian";
 import { SearchResultFileMatchView } from "./searchResultFileMatchView";
 import { ContentReference, ViewState, NodeViewState, NodeId } from "./types";
-import { TreeNodeModel } from "./treeNodeModel";
+import { TreeNode } from "./treeNode";
 import { Logger } from "./utils/logger";
 import { uiState } from "./ui/uiState";
 
@@ -14,7 +14,7 @@ export class TreeNodeView {
     private treeItem: HTMLDivElement;
     private treeItemSelf: HTMLDivElement;
     private treeItemIcon: HTMLDivElement;
-    private treeNode: TreeNodeModel;
+    private treeNode: TreeNode;
     private treeNodeViewChildren: TreeNodeView[];
     private childrenContainer: HTMLDivElement | null = null;
     private matchBlock: HTMLDivElement | null = null;
@@ -23,7 +23,7 @@ export class TreeNodeView {
     constructor(
         app: App,
         parent: HTMLDivElement,
-        treeNode: TreeNodeModel,
+        treeNode: TreeNode,
         viewState: ViewState,
     ) {
         this.app = app;
@@ -57,7 +57,7 @@ export class TreeNodeView {
         this.applyNodeViewStateToUI();
     }
 
-    appendEndNode(parent: HTMLDivElement, treeNode: TreeNodeModel) {
+    appendEndNode(parent: HTMLDivElement, treeNode: TreeNode) {
         this.treeItemIcon = parent.createDiv({ cls: "tree-item-icon collapse-icon" });
 
         let name = treeNode.title;
@@ -81,7 +81,7 @@ export class TreeNodeView {
         });
     }
 
-    appendTreeItemChildren(treeItem: HTMLDivElement, children: TreeNodeModel[]) {
+    appendTreeItemChildren(treeItem: HTMLDivElement, children: TreeNode[]) {
         this.childrenContainer = treeItem.createDiv({ cls: "tree-item-children" });
         children.forEach((c) => {
             Logger.debug(ENABLE_LOG_CREATE, "[TNV:child-create] parent=", this.treeNode?.path, "child=", c?.path);
@@ -105,7 +105,7 @@ export class TreeNodeView {
         }
     }
 
-    appendReferences(parent: HTMLDivElement, item: TreeNodeModel, references: ContentReference[]) {
+    appendReferences(parent: HTMLDivElement, item: TreeNode, references: ContentReference[]) {
         this.matchBlock = parent.createDiv({ cls: "search-result-file-matches" });
         const matchView = new SearchResultFileMatchView(this.app, this.matchBlock, item.content, references);
         matchView.render();
@@ -233,7 +233,7 @@ export class TreeNodeView {
         return this.ensureNodeViewState().isCollapsed;
     }
 
-    get treeNodeModel(): TreeNodeModel {
+    get TreeNode(): TreeNode {
         return this.treeNode;
     }
 
