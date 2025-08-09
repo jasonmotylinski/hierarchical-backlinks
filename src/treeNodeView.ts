@@ -19,22 +19,18 @@ export class TreeNodeView {
     private childrenContainer: HTMLDivElement | null = null;
     private matchBlock: HTMLDivElement | null = null;
     private viewState: ViewState;
-    private allViews?: TreeNodeView[];
 
     constructor(
         app: App,
         parent: HTMLDivElement,
         treeNode: TreeNodeModel,
         viewState: ViewState,
-        allViews?: TreeNodeView[],
     ) {
         this.app = app;
         this.parent = parent;
         this.treeNode = treeNode;
         this.treeNodeViewChildren = [];
         this.viewState = viewState;
-        this.allViews = allViews;
-        this.allViews?.push(this);             // ← add self to shared array
         Logger.debug(ENABLE_LOG_CREATE, "[TNV:ctor] path=", this.treeNode?.path);
         const kidsCount = this.treeNode?.children?.length ?? 0;
         Logger.debug(ENABLE_LOG_CREATE, "[TNV:ctor] children count=", kidsCount);
@@ -93,8 +89,7 @@ export class TreeNodeView {
                 this.app,
                 this.childrenContainer!,
                 c,
-                this.viewState,
-                this.allViews
+                this.viewState
             );
             treeNodeView.render();
             this.treeNodeViewChildren.push(treeNodeView);

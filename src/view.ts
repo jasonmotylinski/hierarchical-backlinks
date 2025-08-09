@@ -19,7 +19,6 @@ export const VIEW_TYPE = "hierarchical-backlinks";
 export class HierarchicalBacklinksView extends ItemView {
     private plugin: HierarchicalBacklinksPlugin;
     private treeNodeViews: TreeNodeView[] = [];
-    private treeNodeViewRoots: TreeNodeView[] = [];
     private originalHierarchy: TreeNodeModel[] = [];
     private viewState: ViewState | null = null;
     private currentNoteId: string | null = null;
@@ -86,38 +85,31 @@ export class HierarchicalBacklinksView extends ItemView {
         Logger.debug(ENABLE_LOG_SORT, "[createPane] treeNodeViews reset -> count:", this.treeNodeViews.length);
 
         Logger.debug(ENABLE_LOG_SORT, "[createPane] calling layout.mount; current collected views:", this.treeNodeViews.length);
-        // IMPORTANT:
-        // layout.mount() only creates root nodes; each root appends its own children.
-        // All nodes (roots + descendants) register themselves into a shared collector (treeNodeViews)
-        // so their viewState (isCollapsed/isVisible) can be preserved during resorting.
-        // Most operations (e.g., global toggles) only need roots, so we filter treeNodeViews to get treeNodeViewRoots.
         this.layout.mount(container as HTMLDivElement, hierarchy, {
             createTreeNodeView: (containerEl, node) => {
                 const v = new TreeNodeView(
                     this.app,
                     containerEl,
                     node,
-                    this.viewState!,
-                    // Shared collector array: all TreeNodeView instances (roots + descendants) push themselves here
-                    this.treeNodeViews
+                    this.viewState!
                 );
-                // Only collects root nodes
-                // this.treeNodeViews.push(v);
+                // Collects nodes and appends their children to them
+                this.treeNodeViews.push(v);
                 Logger.debug(ENABLE_LOG_SORT, "[createPane] created TreeNodeView for:", node.path);
                 return v;
             },
             onListToggle: (collapsed) => {
                 if (collapsed) {
-                    this.treeNodeViewRoots.forEach((n) => n.listToggleOn());
+                    this.treeNodeViews.forEach((n) => n.listToggleOn());
                 } else {
-                    this.treeNodeViewRoots.forEach((n) => n.listToggleOff());
+                    this.treeNodeViews.forEach((n) => n.listToggleOff());
                 }
             },
             onContentToggle: (collapsed) => {
                 if (collapsed) {
-                    this.treeNodeViewRoots.forEach((n) => n.contentHiddenToggleOn());
+                    this.treeNodeViews.forEach((n) => n.contentHiddenToggleOn());
                 } else {
-                    this.treeNodeViewRoots.forEach((n) => n.contentHiddenToggleOff());
+                    this.treeNodeViews.forEach((n) => n.contentHiddenToggleOff());
                 }
             },
             onSearchChange: (q) => {
@@ -135,9 +127,6 @@ export class HierarchicalBacklinksView extends ItemView {
         Logger.debug(ENABLE_LOG_SORT, "[createPane] layout.mount finished; collected views:", this.treeNodeViews.length);
         Logger.debug(ENABLE_LOG_SORT, "[createPane] collected node paths:", this.treeNodeViews.map(v => v.treeNodeModel.path));
 
-        // Define roots once for reuse
-        this.treeNodeViewRoots = this.treeNodeViews.filter(v => !v.treeNodeModel.parent);
-
         // === SORT RESTORE (special path) ============================================
         if (this._isSortRestore && this._sortSnapshot) {
             Logger.debug(ENABLE_LOG_SORT, "[createPane] SORT RESTORE: applying snapshot");
@@ -147,7 +136,7 @@ export class HierarchicalBacklinksView extends ItemView {
 
             // 2) Apply restored states to all rendered views (deep preferred)
             // NOTE: Only root nodes are iterated here; applyNodeViewStateToUI() will recurse into children.
-            for (const v of this.treeNodeViewRoots) {
+            for (const v of this.treeNodeViews) {
                 v.applyNodeViewStateToUI();
             }
             // 3) Clear snapshot/flag and EXIT EARLY so nothing else runs this cycle
@@ -160,22 +149,22 @@ export class HierarchicalBacklinksView extends ItemView {
 
         // 1. Apply global list/content states first
         if (uiState.listCollapsed) {
-            this.treeNodeViewRoots.forEach(v => v.listToggleOn());
+            this.treeNodeViews.forEach(v => v.listToggleOn());
         } else {
-            this.treeNodeViewRoots.forEach(v => v.listToggleOff());
+            this.treeNodeViews.forEach(v => v.listToggleOff());
         }
         if (uiState.contentCollapsed) {
-            this.treeNodeViewRoots.forEach(v => v.contentHiddenToggleOn());
+            this.treeNodeViews.forEach(v => v.contentHiddenToggleOn());
         } else {
-            this.treeNodeViewRoots.forEach(v => v.contentHiddenToggleOff());
+            this.treeNodeViews.forEach(v => v.contentHiddenToggleOff());
         }
 
         // 2. Then re-apply (per-node collapsed &) visibility states
-        for (const v of this.treeNodeViewRoots) {
+        for (const v of this.treeNodeViews) {
             v.applyNodeViewStateToUI();
         }
-        Logger.debug(ENABLE_LOG_SORT, "[createPane] re-applied collapsed/visibility states to", this.treeNodeViewRoots.length, "nodes");
-        Logger.debug(ENABLE_LOG_SORT, "[createPane] re-applied collapsed/visibility states to", this.treeNodeViewRoots.length, "nodes");
+        Logger.debug(ENABLE_LOG_SORT, "[createPane] re-applied collapsed/visibility states to", this.treeNodeViews.length, "nodes");
+        Logger.debug(ENABLE_LOG_SORT, "[createPane] re-applied collapsed/visibility states to", this.treeNodeViews.length, "nodes");
         Logger.debug(ENABLE_LOG_SORT, "[createPane] DONE with createPane");
     }
 
@@ -196,7 +185,7 @@ export class HierarchicalBacklinksView extends ItemView {
     private updateSortOrder(descending: boolean) {
         Logger.debug(ENABLE_LOG_SORT, `[updateSortOrder] Current=${this.sortDescending}, New=${descending}`);
         this.sortDescending = descending;
-        Logger.debug(ENABLE_LOG_SORT, "[updateSortOrder] BEFORE remount; collected views:", this.treeNodeViewRoots.length,
+        Logger.debug(ENABLE_LOG_SORT, "[updateSortOrder] BEFORE remount; collected views:", this.treeNodeViews.length,
             "flattened=", this.isFlattened);
         // We rebuild the DOM from a sorted data source and rely on createPane()
         // to reapply per-node states (isCollapsed/isVisible) via viewState.
@@ -210,7 +199,7 @@ export class HierarchicalBacklinksView extends ItemView {
                 descending ? nameOf(b).localeCompare(nameOf(a)) : nameOf(a).localeCompare(nameOf(b))
             );
             this.createPane(container, leaves);
-            Logger.debug(ENABLE_LOG_SORT, "[updateSortOrder] AFTER remount; collected views:", this.treeNodeViewRoots.length);
+            Logger.debug(ENABLE_LOG_SORT, "[updateSortOrder] AFTER remount; collected views:", this.treeNodeViews.length);
         } else {
             // Take snapshot for sort restore
             this._sortSnapshot = this.snapshotNodeStates();
@@ -220,7 +209,7 @@ export class HierarchicalBacklinksView extends ItemView {
             const cloned = this.cloneHierarchy(this.originalHierarchy);
             this.deepSortHierarchy(cloned, descending);
             this.createPane(container, cloned);
-            Logger.debug(ENABLE_LOG_SORT, "[updateSortOrder] AFTER remount; collected views:", this.treeNodeViewRoots.length);
+            Logger.debug(ENABLE_LOG_SORT, "[updateSortOrder] AFTER remount; collected views:", this.treeNodeViews.length);
         }
     }
 
@@ -292,8 +281,8 @@ export class HierarchicalBacklinksView extends ItemView {
         //console.debug(`[filterBacklinks] Query: "${trimmed}"`);
         Logger.debug(ENABLE_LOG_FILTER, `[filterBacklinks] Query: "${trimmed}"`);
 
-        // Update visibility of treeNodeViewRoots in-place (roots only; method recurses into children)
-        for (const v of this.treeNodeViewRoots) {
+        // Update visibility of treeNodeViews in-place (roots only; method recurses into children)
+        for (const v of this.treeNodeViews) {
             v.applyNodeViewStateToUI();
         }
     }
