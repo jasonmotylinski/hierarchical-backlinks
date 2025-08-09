@@ -5,16 +5,9 @@ import { TreeNodeModel } from "../treeNodeModel";
 import { TreeNodeView } from "../treeNodeView";
 import { uiState } from "../uiState";
 import { Logger } from "../utils/logger";
+import type { BacklinksLayoutCallbacks } from "./../types";
 
 const ENABLE_LOG = true;
-
-export type BacklinksLayoutCallbacks = {
-    createTreeNodeView: (containerEl: HTMLDivElement, node: TreeNodeModel) => TreeNodeView;
-    onListToggle: (collapsed: boolean) => void;
-    onContentToggle: (collapsed: boolean) => void;
-    onSearchChange: (query: string) => void;
-    onSortToggle: (descending: boolean) => void;
-};
 
 export class BacklinksLayout {
     constructor(private app: App) { }
@@ -66,6 +59,7 @@ export class BacklinksLayout {
         navButtonsView.listCollapseButton.setCollapsed(uiState.listCollapsed);
         navButtonsView.contentCollapseButton.setCollapsed(uiState.contentCollapsed);
         navButtonsView.sortCollapseButton.setCollapsed(uiState.sortCollapsed);
+        navButtonsView.flattenCollapseButton.setCollapsed(uiState.flattenCollapsed);
 
         navButtonsView.listCollapseButton.on("collapse-click", () => {
             const isOn = navButtonsView.listCollapseButton.isCollapsed();
@@ -83,6 +77,12 @@ export class BacklinksLayout {
             const isOn = navButtonsView.sortCollapseButton.isCollapsed();
             uiState.sortCollapsed = isOn;
             callbacks.onSortToggle(isOn);
+        });
+
+        navButtonsView.flattenCollapseButton.on('collapse-click', () => {
+            const isOn = navButtonsView.flattenCollapseButton.isCollapsed();
+            uiState.flattenCollapsed = isOn;
+            callbacks.onFlattenToggle(isOn);
         });
 
         // Search bar lives inside the header
@@ -174,10 +174,10 @@ export class BacklinksLayout {
             treeNodeViews.forEach((n) => n.contentHiddenToggleOff());
         }
         if (uiState.sortCollapsed) {
-            callbacks.onSortToggle?.(true); // true = descending (Z→A)
+            callbacks.onSortToggle(true); // true = descending (Z→A)
         } else {
             // Optional: explicitly call with false for clarity
-            callbacks.onSortToggle?.(false);
+            callbacks.onSortToggle(false);
         }
 
         // If there is an active query on mount, ask the view to filter
@@ -193,21 +193,21 @@ export class BacklinksLayout {
 
     public resortRoots(descending: boolean) {
         if (!this.rootContainerEl || !this.roots || this.roots.length === 0) return;
-      
+
         const nameOf = (n: TreeNodeModel) =>
-          (n.path?.split("/").pop() ?? "").toLowerCase();
-      
+            (n.path?.split("/").pop() ?? "").toLowerCase();
+
         const cmp = (a: TreeNodeModel, b: TreeNodeModel) =>
-          descending ? nameOf(b).localeCompare(nameOf(a)) : nameOf(a).localeCompare(nameOf(b));
-      
+            descending ? nameOf(b).localeCompare(nameOf(a)) : nameOf(a).localeCompare(nameOf(b));
+
         const sorted = [...this.roots].sort(cmp);
-      
+
         // Reorder wrappers by appending in the new order (DOM move preserves state)
         for (const node of sorted) {
-          const wrapper = this.rootWrappers.get(node.path);
-          if (wrapper) this.rootContainerEl.appendChild(wrapper);
+            const wrapper = this.rootWrappers.get(node.path);
+            if (wrapper) this.rootContainerEl.appendChild(wrapper);
         }
-      
+
         Logger.debug(true, "[BacklinksLayout] resortRoots done. descending=", descending);
     }
 }

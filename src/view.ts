@@ -24,6 +24,8 @@ export class HierarchicalBacklinksView extends ItemView {
     private currentNoteId: string | null = null;
     private sortDescending: boolean = false;
     private layout: BacklinksLayout | null = null;
+    private isFlattened: boolean = false;
+    private flattenedHierarchy: TreeNodeModel[] = [];
     constructor(leaf: WorkspaceLeaf, plugin: HierarchicalBacklinksPlugin) {
         super(leaf);
         this.plugin = plugin;
@@ -56,10 +58,16 @@ export class HierarchicalBacklinksView extends ItemView {
         }
         const file = new File(this.app, activeFile);
         const hierarchy = await file.getBacklinksHierarchy();
-
-        // Keep the unsorted source of truth; layout will handle in-place sorting
         this.originalHierarchy = hierarchy;
-        this.createPane(container, hierarchy);
+
+
+        // Recompute flattened view if needed
+        if (this.isFlattened) {
+            this.flattenedHierarchy = this.buildFlattenedHierarchy(this.originalHierarchy);
+            this.createPane(container, this.flattenedHierarchy);
+        } else {
+            this.createPane(container, this.originalHierarchy);
+        }
     }
 
     createPane(container: Element, hierarchy: TreeNodeModel[]) {
@@ -102,7 +110,11 @@ export class HierarchicalBacklinksView extends ItemView {
             onSortToggle: (descending: boolean) => {
                 Logger.debug(ENABLE_LOG_SORT, `[createPane:onSortToggle] Triggered with descending=${descending}`);
                 this.updateSortOrder(descending);
-            }
+            },
+            onFlattenToggle: (flattened: boolean) => {
+                this.toggleFlatten(flattened);
+            },
+            initialFlattened: this.isFlattened,
         });
 
         this.treeNodeViews = treeNodeViews;
@@ -116,7 +128,7 @@ export class HierarchicalBacklinksView extends ItemView {
     private updateSortOrder(descending: boolean) {
         Logger.debug(ENABLE_LOG_SORT, `[updateSortOrder] Current=${this.sortDescending}, New=${descending}`);
         this.sortDescending = descending;
-        
+
         // In-place DOM reorder of roots; no remount, state preserved
         this.layout?.resortRoots(this.sortDescending);
     }
@@ -214,4 +226,48 @@ export class HierarchicalBacklinksView extends ItemView {
         this.register_events();
         return this.initialize();
     }
+
+    /**
+     * Build a flat list of leaf nodes from a hierarchical tree.
+     * Preserves node identity (path) so viewState (isVisible/isCollapsed) continues to apply.
+     */
+    private buildFlattenedHierarchy(hierarchy: TreeNodeModel[]): TreeNodeModel[] {
+        const leaves: TreeNodeModel[] = [];
+
+        const walk = (node: TreeNodeModel) => {
+            if (node.isLeaf) {
+                // clone the node but drop children to ensure it's rendered as a root leaf
+                leaves.push({
+                    ...node,
+                    children: [],
+                    setFrontmatter: node.setFrontmatter, // Include the required method
+                });
+                return;
+            }
+            for (const c of node.children) walk(c);
+        };
+
+        for (const root of hierarchy) walk(root);
+        return leaves;
+    }
+
+    private toggleFlatten(flattened: boolean) {
+        // Preserve state map; only switch the rendered data source
+        if (this.isFlattened === flattened) return;
+        this.isFlattened = flattened;
+
+        const container = this.containerEl.children[1] as HTMLElement; // .view-content
+
+        if (this.isFlattened) {
+            this.flattenedHierarchy = this.buildFlattenedHierarchy(this.originalHierarchy);
+            this.createPane(container, this.flattenedHierarchy);
+        } else {
+            this.createPane(container, this.originalHierarchy);
+        }
+
+        // After remount, re-apply collapsed/visibility states (handled by createPane)
+        // Ensure current sort order is respected without remounting again
+        this.layout?.resortRoots(this.sortDescending);
+    }
+
 }
