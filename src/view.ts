@@ -10,8 +10,8 @@ import { Logger } from "./utils/logger";
 import { uiState } from "./ui/uiState";
 import { BacklinksLayout } from "./ui/layout";
 
-const ENABLE_LOG = true; // Set to false to disable logging in this file
-const ENABLE_LOG_SORT = true; // Set to false to disable logging in sort-related methods
+const ENABLE_LOG_FILTER = false; // Set to false to disable logging in filter-related methods
+const ENABLE_LOG_SORT = false; // Set to false to disable logging in sort-related methods
 
 export const VIEW_TYPE = "hierarchical-backlinks";
 
@@ -269,7 +269,7 @@ export class HierarchicalBacklinksView extends ItemView {
             const state = ensureState(node.path);
             state.isVisible = isMatch || childrenMatch;
 
-            Logger.debug(ENABLE_LOG, `[filterTree] node="${node.path}", isLeaf=${node.isLeaf}, isMatch=${isMatch}, childrenMatches=${childrenMatch}`);
+            Logger.debug(ENABLE_LOG_FILTER, `[filterTree] node="${node.path}", isLeaf=${node.isLeaf}, isMatch=${isMatch}, childrenMatches=${childrenMatch}`);
             return state.isVisible;
 
         };
@@ -285,7 +285,7 @@ export class HierarchicalBacklinksView extends ItemView {
         }
 
         //console.debug(`[filterBacklinks] Query: "${trimmed}"`);
-        Logger.debug(ENABLE_LOG, `[filterBacklinks] Query: "${trimmed}"`);
+        Logger.debug(ENABLE_LOG_FILTER, `[filterBacklinks] Query: "${trimmed}"`);
 
         // Update visibility of treeNodeViews in-place
         for (const v of this.treeNodeViews) {

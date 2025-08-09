@@ -7,7 +7,7 @@ import { uiState } from "./uiState";
 import { Logger } from "../utils/logger";
 import type { BacklinksLayoutCallbacks } from "./../types";
 
-const ENABLE_LOG = true;
+const ENABLE_LOG = false;
 
 export class BacklinksLayout {
     constructor(private app: App) { }
