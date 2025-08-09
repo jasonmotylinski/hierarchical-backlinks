@@ -162,18 +162,6 @@ export class BacklinksLayout {
             });
         }
 
-        // Apply current toggle states (UI concern)
-        // if (uiState.listCollapsed) {
-        //     treeNodeViews.forEach((n) => n.listToggleOn());
-        // } else {
-        //     treeNodeViews.forEach((n) => n.listToggleOff());
-        // }
-        // if (uiState.contentCollapsed) {
-        //     treeNodeViews.forEach((n) => n.contentHiddenToggleOn());
-        // } else {
-        //     treeNodeViews.forEach((n) => n.contentHiddenToggleOff());
-        // }
-
         // If there is an active query on mount, ask the view to filter
         if (uiState.query && uiState.query.trim().length > 0) {
             callbacks.onSearchChange(uiState.query);

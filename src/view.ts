@@ -26,8 +26,8 @@ export class HierarchicalBacklinksView extends ItemView {
     private layout: BacklinksLayout | null = null;
     private isFlattened: boolean = false;
     private flattenedHierarchy: TreeNode[] = [];
-    private _isSortRestore: boolean = false;
-    private _sortSnapshot?: Map<string, { isCollapsed: boolean; isVisible: boolean }>;
+    private isSortRestore: boolean = false;
+    private sortSnapshot?: Map<string, { isCollapsed: boolean; isVisible: boolean }>;
     constructor(leaf: WorkspaceLeaf, plugin: HierarchicalBacklinksPlugin) {
         super(leaf);
         this.plugin = plugin;
@@ -128,20 +128,19 @@ export class HierarchicalBacklinksView extends ItemView {
         Logger.debug(ENABLE_LOG_SORT, "[createPane] collected node paths:", this.treeNodeViews.map(v => v.TreeNode.path));
 
         // === SORT RESTORE (special path) ============================================
-        if (this._isSortRestore && this._sortSnapshot) {
+        if (this.isSortRestore && this.sortSnapshot) {
             Logger.debug(ENABLE_LOG_SORT, "[createPane] SORT RESTORE: applying snapshot");
 
             // 1) Overwrite viewState with the snapshot we took before sorting
-            this.restoreNodeStatesFrom(this._sortSnapshot);
+            this.restoreNodeStatesFrom(this.sortSnapshot);
 
             // 2) Apply restored states to all rendered views (deep preferred)
-            // NOTE: Only root nodes are iterated here; applyNodeViewStateToUI() will recurse into children.
             for (const v of this.treeNodeViews) {
                 v.applyNodeViewStateToUI();
             }
             // 3) Clear snapshot/flag and EXIT EARLY so nothing else runs this cycle
-            this._isSortRestore = false;
-            this._sortSnapshot = undefined;
+            this.isSortRestore = false;
+            this.sortSnapshot = undefined;
             Logger.debug(ENABLE_LOG_SORT, "[createPane] SORT RESTORE: done");
             return; // ← important: skip global toggles/etc. for this special pass
         }
@@ -159,7 +158,7 @@ export class HierarchicalBacklinksView extends ItemView {
             this.treeNodeViews.forEach(v => v.contentHiddenToggleOff());
         }
 
-        // 2. Then re-apply (per-node collapsed &) visibility states
+        // 2. Then update UI
         for (const v of this.treeNodeViews) {
             v.applyNodeViewStateToUI();
         }
@@ -202,8 +201,8 @@ export class HierarchicalBacklinksView extends ItemView {
             Logger.debug(ENABLE_LOG_SORT, "[updateSortOrder] AFTER remount; collected views:", this.treeNodeViews.length);
         } else {
             // Take snapshot for sort restore
-            this._sortSnapshot = this.snapshotNodeStates();
-            this._isSortRestore = true;
+            this.sortSnapshot = this.snapshotNodeStates();
+            this.isSortRestore = true;
 
             // Deep sort a cloned hierarchy so we don't mutate the original
             const cloned = this.cloneHierarchy(this.originalHierarchy);

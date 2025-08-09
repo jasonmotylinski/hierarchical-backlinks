@@ -115,7 +115,7 @@ export class TreeNodeView {
         // Always collapse the node when toggling on.
         // Collapse this node and all descendants; also mark the list as collapsed
         uiState.listCollapsed = true;
-        const state = this.ensureNodeViewState();
+        const state = this.getOrCreateNodeViewState();
         state.isCollapsed = true;
 
         this.treeNodeViewChildren.forEach(child => child.listToggleOn());
@@ -129,7 +129,7 @@ export class TreeNodeView {
 
         // Expand according to contentCollapsed for leaves; parents expand
         uiState.listCollapsed = false;
-        const state = this.ensureNodeViewState();
+        const state = this.getOrCreateNodeViewState();
 
         if (this.treeNode.isLeaf) {
             state.isCollapsed = uiState.contentCollapsed;
@@ -148,7 +148,7 @@ export class TreeNodeView {
 
         // When content is hidden, collapse leaf nodes; keep parents as-is
         uiState.contentCollapsed = true;
-        const state = this.ensureNodeViewState();
+        const state = this.getOrCreateNodeViewState();
 
 
         if (this.treeNode.isLeaf) {
@@ -168,7 +168,7 @@ export class TreeNodeView {
     contentHiddenToggleOff() {
 
         uiState.contentCollapsed = false;
-        const state = this.ensureNodeViewState();
+        const state = this.getOrCreateNodeViewState();
 
 
         if (this.treeNode.isLeaf) {
@@ -193,7 +193,7 @@ export class TreeNodeView {
     }
 
     toggle() {
-        const state = this.ensureNodeViewState();
+        const state = this.getOrCreateNodeViewState();
         state.isCollapsed = !state.isCollapsed;
 
         this.applyNodeViewStateToUI();
@@ -202,7 +202,7 @@ export class TreeNodeView {
     // Applies this node's view state to the UI, then recursively applies to all descendant nodes.
     applyNodeViewStateToUI() {
         Logger.debug(ENABLE_LOG_CREATE, "[TNV:applyNodeViewStateToUI] path=", this.treeNode?.path);
-        const state = this.ensureNodeViewState();
+        const state = this.getOrCreateNodeViewState();
         Logger.debug(ENABLE_LOG_CREATE, "[TNV:applyNodeViewStateToUI] current state=", state);
         let isCollapsed = state.isCollapsed;
 
@@ -230,14 +230,14 @@ export class TreeNodeView {
     }
 
     get isCollapsed(): boolean {
-        return this.ensureNodeViewState().isCollapsed;
+        return this.getOrCreateNodeViewState().isCollapsed;
     }
 
     get TreeNode(): TreeNode {
         return this.treeNode;
     }
 
-    private ensureNodeViewState(): NodeViewState {
+    private getOrCreateNodeViewState(): NodeViewState {
         const id: NodeId = this.treeNode.path;
         let state = this.viewState.nodeStates.get(id);
         if (!state) {
