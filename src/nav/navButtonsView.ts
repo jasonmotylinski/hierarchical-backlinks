@@ -19,15 +19,15 @@ export class NavButtonsView {
         const navButtonsContainer=this.parent.createDiv({cls:"nav-header"})
                                              .createDiv({cls: "nav-buttons-container"});
         
-        this.listCollapseButton = new CollapseButton(this.app, navButtonsContainer,'list');
-        this.listCollapseButton.render();
-        this.contentCollapseButton=new CollapseButton(this.app, navButtonsContainer, 'file-minus');
+        this.contentCollapseButton=new CollapseButton(this.app, navButtonsContainer, 'list');
         this.contentCollapseButton.render();
-        this.searchCollapseButton = new CollapseButton(this.app, navButtonsContainer, 'search');
-        this.searchCollapseButton.render();
-        this.sortCollapseButton = new CollapseButton(this.app, navButtonsContainer, 'arrow-down-up');
-        this.sortCollapseButton.render();
+        this.listCollapseButton = new CollapseButton(this.app, navButtonsContainer,'list-collapse');
+        this.listCollapseButton.render();
         this.flattenCollapseButton = new CollapseButton(this.app, navButtonsContainer, 'fold-vertical');
         this.flattenCollapseButton.render();
+        this.sortCollapseButton = new CollapseButton(this.app, navButtonsContainer, 'arrow-up-narrow-wide');
+        this.sortCollapseButton.render();
+        this.searchCollapseButton = new CollapseButton(this.app, navButtonsContainer, 'search');
+        this.searchCollapseButton.render();
     }
 }
