@@ -1,6 +1,6 @@
 import { Plugin, WorkspaceLeaf, PluginSettingTab, Setting, App } from "obsidian";
 import {HierarchicalBacklinksView, VIEW_TYPE} from "./view";
-import { uiState } from "./uiState";
+import { uiState } from "./ui/uiState";
 
 interface HierarchicalBacklinksSettings {
     toggleLeafNodes: boolean;

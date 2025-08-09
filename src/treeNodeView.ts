@@ -3,7 +3,7 @@ import { SearchResultFileMatchView } from "./searchResultFileMatchView";
 import { ContentReference, ViewState, NodeViewState, NodeId } from "./types";
 import { TreeNodeModel } from "./treeNodeModel";
 import { Logger } from "./utils/logger";
-import { uiState } from "./uiState";
+import { uiState } from "./ui/uiState";
 
 const ENABLE_LOG = false; // Set to false to disable logging in this file
 

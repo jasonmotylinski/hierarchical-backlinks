@@ -7,7 +7,7 @@ import { ViewState, NodeViewState } from "./types";
 import { parseSearchQuery } from "./search/parse";
 import { makePredicate } from "./search/evaluate";
 import { Logger } from "./utils/logger";
-import { uiState } from "./uiState";
+import { uiState } from "./ui/uiState";
 import { BacklinksLayout } from "./ui/layout";
 
 const ENABLE_LOG = false; // Set to false to disable logging in this file

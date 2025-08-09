@@ -3,7 +3,7 @@ import { NavButtonsView } from "../nav/navButtonsView";
 import { SearchBar } from "../nav/searchBar";
 import { TreeNodeModel } from "../treeNodeModel";
 import { TreeNodeView } from "../treeNodeView";
-import { uiState } from "../uiState";
+import { uiState } from "./uiState";
 import { Logger } from "../utils/logger";
 import type { BacklinksLayoutCallbacks } from "./../types";
 
