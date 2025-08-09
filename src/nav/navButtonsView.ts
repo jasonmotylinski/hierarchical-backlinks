@@ -6,9 +6,9 @@ export class NavButtonsView {
     private parent;
     public contentCollapseButton: CollapseButton;
     public listCollapseButton: CollapseButton;
-    public searchToggleButton: CollapseButton;
-    public sortOrderButton: CollapseButton;
-    public flattenToggleButton: CollapseButton;
+    public searchCollapseButton: CollapseButton;
+    public sortCollapseButton: CollapseButton;
+    public flattenCollapseleButton: CollapseButton;
 
     constructor(app: App, parent: Element) {
         this.app=app;
@@ -23,10 +23,10 @@ export class NavButtonsView {
         this.listCollapseButton.render();
         this.contentCollapseButton=new CollapseButton(this.app, navButtonsContainer, 'file-minus');
         this.contentCollapseButton.render();
-        this.searchToggleButton = new CollapseButton(this.app, navButtonsContainer, 'search');
-        this.searchToggleButton.render();
-        // this.sortOrderButton = new CollapseButton(this.app, navButtonsContainer, 'arrow-down-up');
-        // this.sortOrderButton.render();
+        this.searchCollapseButton = new CollapseButton(this.app, navButtonsContainer, 'search');
+        this.searchCollapseButton.render();
+        this.sortCollapseButton = new CollapseButton(this.app, navButtonsContainer, 'arrow-down-up');
+        this.sortCollapseButton.render();
         // this.flattenToggleButton = new CollapseButton(this.app, navButtonsContainer, 'fold-horizontal');
         // this.flattenToggleButton.render();
     }
