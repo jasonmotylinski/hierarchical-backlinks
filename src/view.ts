@@ -134,19 +134,28 @@ async initialize() {
         paneDiv.style.position = "relative";
         paneDiv.style.display = "flex";
         paneDiv.style.flexDirection = "column";
+        // Ensure no right padding/margin so scrollbar is flush
+        paneDiv.style.paddingRight = "0";
+        paneDiv.style.marginRight = "0";
         paneDiv.style.flex = "1 1 auto"; // fill remaining height under the header
 
-        // Static header INSIDE the pane, above the scroll container
-        const linkedHeader = paneDiv.createDiv({ cls: "tree-item-self is-clickable" });
-        linkedHeader.createEl("div", { text: "Linked mentions" });
-
-        // Scroll container that holds the results only
+        // Scroll container that holds the section header + results
         const scrollContainer = paneDiv.createDiv({ cls: "search-result-container" });
         const scDiv = scrollContainer as HTMLDivElement;
         scDiv.style.flex = "1 1 auto";
-        scDiv.style.overflow = "auto"; // <-- only this area scrolls
+        scDiv.style.overflow = "auto"; // only this area scrolls
+        // Ensure scrollbar is flush to the right edge
+        scDiv.style.paddingRight = "0";
+        scDiv.style.marginRight = "0";
 
-        // Render nodes into the scroll container
+        // Section header lives **inside** the scroll container so the scrollbar starts here
+        const linkedHeader = scDiv.createDiv({ cls: "tree-item-self" });
+        linkedHeader.style.paddingLeft = "0";
+        linkedHeader.style.marginLeft = "0";
+        linkedHeader.createEl("div", { text: "Linked mentions" }).style.fontWeight = "bold";
+        // No sticky positioning — header scrolls away with results so the scrollbar starts at its height
+
+        // Render nodes **after** the header inside the scroll container
         this.appendLinks(scDiv, hierarchy);
 
         this.originalHierarchy = hierarchy;
