@@ -11,18 +11,18 @@ export class NavButtonsView {
     public flattenCollapseButton: CollapseButton;
 
     constructor(app: App, parent: Element) {
-        this.app=app;
-        this.parent=parent;
+        this.app = app;
+        this.parent = parent;
     }
 
-    render(){
-        const navButtonsContainer=this.parent.createDiv({cls:"nav-header"})
-                                             .createDiv({cls: "nav-buttons-container"});
-        
-        this.contentCollapseButton=new CollapseButton(this.app, navButtonsContainer, 'list');
-        this.contentCollapseButton.render();
-        this.listCollapseButton = new CollapseButton(this.app, navButtonsContainer,'list-collapse');
+    render() {
+        const navButtonsContainer = this.parent.createDiv({ cls: "nav-header" })
+            .createDiv({ cls: "nav-buttons-container" });
+
+        this.listCollapseButton = new CollapseButton(this.app, navButtonsContainer, 'list-collapse');
         this.listCollapseButton.render();
+        this.contentCollapseButton = new CollapseButton(this.app, navButtonsContainer, 'list');
+        this.contentCollapseButton.render();
         this.flattenCollapseButton = new CollapseButton(this.app, navButtonsContainer, 'fold-vertical');
         this.flattenCollapseButton.render();
         this.sortCollapseButton = new CollapseButton(this.app, navButtonsContainer, 'arrow-up-narrow-wide');
