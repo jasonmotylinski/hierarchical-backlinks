@@ -120,8 +120,12 @@ export class BacklinksLayout {
     scDiv.style.paddingRight = "0";
     scDiv.style.marginRight = "0";
 
-    // Section header lives inside the scroll container
-    const linkedHeader = scDiv.createDiv({ cls: "tree-item-self" });
+    // Section header container for spacing
+    const headerContainer = scDiv.createDiv({ cls: "linked-mentions-header-container" });
+    headerContainer.style.marginBottom = "10px"; // bigger gap below header
+    // optional: headerContainer.style.borderBottom = "1px solid var(--background-modifier-border)";
+
+    const linkedHeader = headerContainer.createDiv({ cls: "tree-item-self" });
     linkedHeader.style.paddingLeft = "0";
     linkedHeader.style.marginLeft = "0";
     linkedHeader.createEl("div", { text: "Linked mentions" }).style.fontWeight = "bold";
