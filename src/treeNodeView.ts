@@ -7,7 +7,7 @@ import { uiState } from "./ui/uiState";
 
 const ENABLE_LOG = false; // Set to false to disable logging in this file
 
-export class TreeNodeView{
+export class TreeNodeView {
     private app: App;
     private static contentHidden: boolean = false;
     private parent: HTMLDivElement;
@@ -19,28 +19,40 @@ export class TreeNodeView{
     private childrenContainer: HTMLDivElement | null = null;
     private matchBlock: HTMLDivElement | null = null;
     private viewState: ViewState;
+    private allViews?: TreeNodeView[];
 
-    constructor(app: App, parent: HTMLDivElement, treeNode: TreeNodeModel, viewState: ViewState, preserveCollapseState: boolean = true) {
+    constructor(
+        app: App,
+        parent: HTMLDivElement,
+        treeNode: TreeNodeModel,
+        viewState: ViewState,
+        allViews?: TreeNodeView[],
+    ) {
         this.app = app;
         this.parent = parent;
         this.treeNode = treeNode;
         this.treeNodeViewChildren = [];
         this.viewState = viewState;
-      }
+        this.allViews = allViews;
+        this.allViews?.push(this);             // ← add self to shared array
+        Logger.debug(true, "[TNV:ctor] path=", this.treeNode?.path);
+        const kidsCount = this.treeNode?.children?.length ?? 0;
+        Logger.debug(true, "[TNV:ctor] children count=", kidsCount);
+    }
 
-    render(){
-        this.treeItem=this.parent.createDiv({cls: "tree-item"});
-        this.treeItemSelf=this.treeItem.createDiv({cls: "tree-item-self is-clickable backlink-item"});
+    render() {
+        this.treeItem = this.parent.createDiv({ cls: "tree-item" });
+        this.treeItemSelf = this.treeItem.createDiv({ cls: "tree-item-self is-clickable backlink-item" });
 
         this.appendEndNode(this.treeItemSelf, this.treeNode);
 
-        const treeItemFlair=this.treeItemSelf.createDiv({cls:"tree-item-flair-outer"}).createEl("span",{cls: "tree-item-flair"});
-        if(this.treeNode.children.length > 0){
+        const treeItemFlair = this.treeItemSelf.createDiv({ cls: "tree-item-flair-outer" }).createEl("span", { cls: "tree-item-flair" });
+        if (this.treeNode.children.length > 0) {
             this.appendTreeItemChildren(this.treeItem, this.treeNode.children);
-            
-        }else{
-            const total=this.treeNode.references.reduce((accumulator: number,curr)=>{
-                return accumulator+=curr.content.length + curr.properties.length;
+
+        } else {
+            const total = this.treeNode.references.reduce((accumulator: number, curr) => {
+                return accumulator += curr.content.length + curr.properties.length;
             }, 0);
             treeItemFlair.setText(total.toString());
             this.appendReferences(this.treeItem, this.treeNode, this.treeNode.references);
@@ -50,38 +62,40 @@ export class TreeNodeView{
         this.updateCollapsedState();
     }
 
-    appendEndNode(parent :HTMLDivElement, treeNode :TreeNodeModel){
-        this.treeItemIcon=parent.createDiv({cls: "tree-item-icon collapse-icon"});
+    appendEndNode(parent: HTMLDivElement, treeNode: TreeNodeModel) {
+        this.treeItemIcon = parent.createDiv({ cls: "tree-item-icon collapse-icon" });
 
         let name = treeNode.title;
-        if(treeNode.children && treeNode.children.length == 0){
-            const firstLink=this.app.metadataCache.getFirstLinkpathDest(treeNode.title, '');
-            
-            if(firstLink){
-                name=firstLink.basename;
+        if (treeNode.children && treeNode.children.length == 0) {
+            const firstLink = this.app.metadataCache.getFirstLinkpathDest(treeNode.title, '');
+
+            if (firstLink) {
+                name = firstLink.basename;
             }
         }
 
-        const treeItemInner=parent.createDiv({cls: "tree-item-inner", text: name});
+        const treeItemInner = parent.createDiv({ cls: "tree-item-inner", text: name });
         setIcon(this.treeItemIcon, 'right-triangle');
 
-        this.treeItemIcon.addEventListener("click", (e)=> {
+        this.treeItemIcon.addEventListener("click", (e) => {
 
             this.toggle();
         });
-        treeItemInner.addEventListener("click", (e)=>{ 
+        treeItemInner.addEventListener("click", (e) => {
             this.navigateTo(treeNode.path);
         });
     }
 
-    appendTreeItemChildren(treeItem:HTMLDivElement, children :TreeNodeModel[]){
-        this.childrenContainer=treeItem.createDiv({cls: "tree-item-children"});
-        children.forEach((c)=>{ 
+    appendTreeItemChildren(treeItem: HTMLDivElement, children: TreeNodeModel[]) {
+        this.childrenContainer = treeItem.createDiv({ cls: "tree-item-children" });
+        children.forEach((c) => {
+            Logger.debug(true, "[TNV:child-create] parent=", this.treeNode?.path, "child=", c?.path);
             const treeNodeView = new TreeNodeView(
                 this.app,
                 this.childrenContainer!,
                 c,
                 this.viewState,
+                this.allViews
             );
             treeNodeView.render();
             this.treeNodeViewChildren.push(treeNodeView);
@@ -89,15 +103,15 @@ export class TreeNodeView{
 
     }
 
-    navigateTo(path :string){
-        const firstLink=this.app.metadataCache.getFirstLinkpathDest(path, '');
-            
-        if(firstLink){
+    navigateTo(path: string) {
+        const firstLink = this.app.metadataCache.getFirstLinkpathDest(path, '');
+
+        if (firstLink) {
             this.app.workspace.openLinkText(firstLink.name, firstLink.path);
         }
     }
 
-    appendReferences(parent:HTMLDivElement, item: TreeNodeModel, references :ContentReference[]){
+    appendReferences(parent: HTMLDivElement, item: TreeNodeModel, references: ContentReference[]) {
         this.matchBlock = parent.createDiv({ cls: "search-result-file-matches" });
         const matchView = new SearchResultFileMatchView(this.app, this.matchBlock, item.content, references);
         matchView.render();
@@ -111,10 +125,10 @@ export class TreeNodeView{
         state.isCollapsed = true;
 
         this.treeNodeViewChildren.forEach(child => child.listToggleOn());
-        
+
         this.updateCollapsedState();
 
-        Logger.debug(ENABLE_LOG, "[ListToggleOn]", this.treeNode.title, "→ isCollapsed set to:", state.isCollapsed);    
+        Logger.debug(ENABLE_LOG, "[ListToggleOn]", this.treeNode.title, "→ isCollapsed set to:", state.isCollapsed);
     }
 
     listToggleOff() {
@@ -130,10 +144,11 @@ export class TreeNodeView{
         }
 
         this.treeNodeViewChildren.forEach(child => child.listToggleOff());
-        
+
         this.updateCollapsedState();
 
-        Logger.debug(ENABLE_LOG, "[ListToggleOff]", this.treeNode.title, "| isLeaf:", this.treeNode.isLeaf, "| contentCollapsed:", uiState.contentCollapsed, "→ isCollapsed set to:", state.isCollapsed);    }
+        Logger.debug(ENABLE_LOG, "[ListToggleOff]", this.treeNode.title, "| isLeaf:", this.treeNode.isLeaf, "| contentCollapsed:", uiState.contentCollapsed, "→ isCollapsed set to:", state.isCollapsed);
+    }
 
     contentHiddenToggleOn() {
 
@@ -151,9 +166,9 @@ export class TreeNodeView{
 
         this.treeNodeViewChildren.forEach(child => child.contentHiddenToggleOn());
         TreeNodeView.contentHidden = true;
-        
+
         this.updateCollapsedState();
-        
+
         Logger.debug(ENABLE_LOG, "[ContentHiddenToggleOn] contentCollapsed set to true");
     }
 
@@ -181,19 +196,21 @@ export class TreeNodeView{
         TreeNodeView.contentHidden = false;
 
         this.updateCollapsedState();
-        
+
         Logger.debug(ENABLE_LOG, "[ContentHiddenToggleOff] contentCollapsed set to false");
     }
 
     toggle() {
         const state = this.ensureNodeViewState();
         state.isCollapsed = !state.isCollapsed;
-        
+
         this.updateCollapsedState();
     }
 
     updateCollapsedState() {
+        Logger.debug(true, "[TNV:updateCollapsedState] path=", this.treeNode?.path);
         const state = this.ensureNodeViewState();
+        Logger.debug(true, "[TNV:updateCollapsedState] current state=", state);
         let isCollapsed = state.isCollapsed;
 
         // NEW: if the node is not visible, hide it and skip collapse logic
@@ -221,7 +238,7 @@ export class TreeNodeView{
 
     get isCollapsed(): boolean {
         return this.ensureNodeViewState().isCollapsed;
-    }   
+    }
 
     get treeNodeModel(): TreeNodeModel {
         return this.treeNode;

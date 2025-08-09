@@ -163,22 +163,16 @@ export class BacklinksLayout {
         }
 
         // Apply current toggle states (UI concern)
-        if (uiState.listCollapsed) {
-            treeNodeViews.forEach((n) => n.listToggleOn());
-        } else {
-            treeNodeViews.forEach((n) => n.listToggleOff());
-        }
-        if (uiState.contentCollapsed) {
-            treeNodeViews.forEach((n) => n.contentHiddenToggleOn());
-        } else {
-            treeNodeViews.forEach((n) => n.contentHiddenToggleOff());
-        }
-        if (uiState.sortCollapsed) {
-            callbacks.onSortToggle(true); // true = descending (Z→A)
-        } else {
-            // Optional: explicitly call with false for clarity
-            callbacks.onSortToggle(false);
-        }
+        // if (uiState.listCollapsed) {
+        //     treeNodeViews.forEach((n) => n.listToggleOn());
+        // } else {
+        //     treeNodeViews.forEach((n) => n.listToggleOff());
+        // }
+        // if (uiState.contentCollapsed) {
+        //     treeNodeViews.forEach((n) => n.contentHiddenToggleOn());
+        // } else {
+        //     treeNodeViews.forEach((n) => n.contentHiddenToggleOff());
+        // }
 
         // If there is an active query on mount, ask the view to filter
         if (uiState.query && uiState.query.trim().length > 0) {
@@ -189,25 +183,5 @@ export class BacklinksLayout {
             treeNodeViews,
             elements: { root, pane: paneDiv, scrollContainer: scDiv, headerEl },
         };
-    }
-
-    public resortRoots(descending: boolean) {
-        if (!this.rootContainerEl || !this.roots || this.roots.length === 0) return;
-
-        const nameOf = (n: TreeNodeModel) =>
-            (n.path?.split("/").pop() ?? "").toLowerCase();
-
-        const cmp = (a: TreeNodeModel, b: TreeNodeModel) =>
-            descending ? nameOf(b).localeCompare(nameOf(a)) : nameOf(a).localeCompare(nameOf(b));
-
-        const sorted = [...this.roots].sort(cmp);
-
-        // Reorder wrappers by appending in the new order (DOM move preserves state)
-        for (const node of sorted) {
-            const wrapper = this.rootWrappers.get(node.path);
-            if (wrapper) this.rootContainerEl.appendChild(wrapper);
-        }
-
-        Logger.debug(true, "[BacklinksLayout] resortRoots done. descending=", descending);
     }
 }
