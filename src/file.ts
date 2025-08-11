@@ -12,8 +12,43 @@ export class File {
 		this.file=file;
     }
 
+    private insertTreeNodesForPath(
+        level: Record<string, any>,
+        parts: string[],
+        file: TFile,
+        content: string,
+        references: ContentReference[]
+    ): void {
+        parts.reduce((r: any, name: string, i: number) => {
+            if (!r[name]) {
+                r[name] = { result: [] };
+
+                const isLast = i === parts.length - 1;
+                const node = new TreeNode(
+                    name,
+                    isLast ? content : "",
+                    isLast ? references : [],
+                    r[name].result,
+                    r.__node ?? null,
+                    isLast
+                );
+                node.isLeaf = isLast;
+                node.parent = r.__node ?? undefined;
+                node.path = parts.slice(0, i + 1).join('/');
+
+                if (isLast) {
+                    const cache = this.app.metadataCache.getFileCache(file);
+                    node.setFrontmatter(cache?.frontmatter as unknown as Record<string, unknown> | undefined);
+                }
+
+                r.result.push(node);
+                r[name].__node = node;
+            }
+            return r[name];
+        }, level);
+    }
      
-    getBacklinks(){
+    async getBacklinks(){
         // @ts-ignore - getBacklinksForFile is available in the JS API, not TS for some reason. Function does exist on MetadataCache 
         const backlinks = this.app.metadataCache.getBacklinksForFile(this.file); 
         backlinks.data.delete(this.file.path);
@@ -23,48 +58,19 @@ export class File {
     async getBacklinksHierarchy(): Promise<TreeNode[]> {
         const result: TreeNode[] = [];
         const level: Record<string, any> = { result };
-        const backlinks = this.getBacklinks();
+        const backlinks = await this.getBacklinks();
 
         for (const [path, backlinkReferences] of backlinks.data.entries()) {
-            const parts = path.split('/');
             const file = this.app.vault.getFileByPath(path);
+            if (!file) continue;
 
-            if (file) {
-                const cached = this.app.vault.cachedRead(file);
-                const content = await cached;
-                const references = await this.getReferences(path, backlinkReferences as BacklinkReference[]);
+            const parts = path.split('/');
+            const [content, references] = await Promise.all([
+                this.app.vault.cachedRead(file),
+                this.getReferences(path, backlinkReferences as BacklinkReference[]),
+            ]);
 
-                parts.reduce((r: any, name: string, i: number, a: string[]) => {
-                    if (!r[name]) {
-                        r[name] = { result: [] };
-
-                        const isLast = i === parts.length - 1;
-                        const node = new TreeNode(
-                            name,
-                            isLast ? content : "",
-                            isLast ? references : [],
-                            r[name].result,
-                            r.__node ?? null,
-                            isLast
-                          );
-                        node.isLeaf = isLast;
-                        node.parent = r.__node ?? undefined;
-                        node.path = parts.slice(0, i + 1).join('/'); // stable NodeId for all nodes
-                        // Enrich leaf nodes with frontmatter from metadata cache
-                        if (isLast) {
-                            const cache = this.app.metadataCache.getFileCache(file);
-                            node.setFrontmatter(cache?.frontmatter as unknown as Record<string, unknown> | undefined);
-                        }
-                        //node.path = isLast ? path : ""; // full path only for leaf
-                        //node.isVisible = true;
-
-                        r.result.push(node);
-                        r[name].__node = node;
-                    }
-
-                    return r[name];
-                }, level);
-            }
+            this.insertTreeNodesForPath(level, parts, file, content, references);
         }
 
         return result;
