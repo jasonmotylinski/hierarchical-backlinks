@@ -9,6 +9,7 @@ import { makePredicate } from "./search/evaluate";
 import { Logger } from "./utils/logger";
 import { uiState } from "./ui/uiState";
 import { BacklinksLayout } from "./ui/layout";
+import { getOrCreateNodeViewState } from "./viewState";
 
 const ENABLE_LOG_FILTER = false; // Set to false to disable logging in filter-related methods
 const ENABLE_LOG_SORT = false; // Set to false to disable logging in sort-related methods
@@ -212,31 +213,24 @@ export class HierarchicalBacklinksView extends ItemView {
         }
     }
 
+    private getOrCreateNodeViewState(nodeId: string): NodeViewState {
+        if (!this.viewState) {
+            this.viewState = { nodeStates: new Map<string, NodeViewState>() };
+        }
+        return getOrCreateNodeViewState(this.viewState, nodeId);
+    }
+
     private filterBacklinks(query: string) {
         const trimmed = query.trim().toLowerCase();
 
-        if (!this.viewState) {
-            // safety: create a default view state if not present
-            this.viewState = { nodeStates: new Map<string, NodeViewState>() };
-        }
         uiState.query = trimmed;
 
         // Build search predicate (bare terms target content by default)
         const { clauses } = parseSearchQuery(trimmed, "default");
         const pred = makePredicate(clauses, { defaultKey: "default" });
 
-
-        const ensureState = (path: string): NodeViewState => {
-            let s = this.viewState!.nodeStates.get(path);
-            if (!s) {
-                s = { isCollapsed: false, isVisible: true };
-                this.viewState!.nodeStates.set(path, s);
-            }
-            return s;
-        };
-
         const resetVisibility = (node: TreeNode) => {
-            const s = ensureState(node.path);
+            const s = this.getOrCreateNodeViewState(node.path);
             s.isVisible = true;
             for (const child of node.children) {
                 resetVisibility(child);
@@ -259,7 +253,7 @@ export class HierarchicalBacklinksView extends ItemView {
             }
 
 
-            const state = ensureState(node.path);
+            const state = this.getOrCreateNodeViewState(node.path);
             state.isVisible = isMatch || childrenMatch;
 
             Logger.debug(ENABLE_LOG_FILTER, `[filterTree] node="${node.path}", isLeaf=${node.isLeaf}, isMatch=${isMatch}, childrenMatches=${childrenMatch}`);

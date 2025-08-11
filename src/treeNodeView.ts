@@ -4,6 +4,7 @@ import { ContentReference, ViewState, NodeViewState, NodeId } from "./types";
 import { TreeNode } from "./treeNode";
 import { Logger } from "./utils/logger";
 import { uiState } from "./ui/uiState";
+import { getOrCreateNodeViewState } from "./viewState";
 
 const ENABLE_LOG_TOGGLE = false; // Set to true to enable toggle logging
 const ENABLE_LOG_CREATE = false; // Set to true to enable node creation logging
@@ -230,7 +231,7 @@ export class TreeNodeView {
     }
 
     get isCollapsed(): boolean {
-        return this.getOrCreateNodeViewState().isCollapsed;
+        return getOrCreateNodeViewState(this.viewState, this.treeNode.path).isCollapsed;
     }
 
     get TreeNode(): TreeNode {
@@ -238,13 +239,7 @@ export class TreeNodeView {
     }
 
     private getOrCreateNodeViewState(): NodeViewState {
-        const id: NodeId = this.treeNode.path;
-        let state = this.viewState.nodeStates.get(id);
-        if (!state) {
-            state = { isCollapsed: false, isVisible: true };
-            this.viewState.nodeStates.set(id, state);
-        }
-        return state;
+        return getOrCreateNodeViewState(this.viewState, this.treeNode.path);
     }
 
 }
