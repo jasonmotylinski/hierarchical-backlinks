@@ -264,6 +264,36 @@ export class HierarchicalBacklinksView extends ItemView {
         return getOrCreateNodeViewState(this.viewState, nodeId);
     }
 
+    private resetVisibilityForTree(node: TreeNode): void {
+        const s = this.getOrCreateNodeViewState(node.path);
+        s.isVisible = true;
+        for (const child of node.children) {
+            this.resetVisibilityForTree(child);
+        }
+    }
+
+    private markVisibilityForTree(
+        node: TreeNode,
+        pred: (n: TreeNode) => boolean
+    ): boolean {
+        const isMatch = node.isLeaf && pred(node);
+
+        let childrenMatch = false;
+        for (const child of node.children) {
+            const childMatches = this.markVisibilityForTree(child, pred);
+            if (childMatches) childrenMatch = true;
+        }
+
+        const state = this.getOrCreateNodeViewState(node.path);
+        state.isVisible = isMatch || childrenMatch;
+
+        Logger.debug(
+            ENABLE_LOG_FILTER,
+            `[filterTree] node="${node.path}", isLeaf=${node.isLeaf}, isMatch=${isMatch}, childrenMatches=${childrenMatch}`
+        );
+        return state.isVisible;
+    }
+
     private filterBacklinks(query: string) {
         const trimmed = query.trim().toLowerCase();
 
@@ -273,45 +303,13 @@ export class HierarchicalBacklinksView extends ItemView {
         const { clauses } = parseSearchQuery(trimmed, "default");
         const pred = makePredicate(clauses, { defaultKey: "default" });
 
-        const resetVisibility = (node: TreeNode) => {
-            const s = this.getOrCreateNodeViewState(node.path);
-            s.isVisible = true;
-            for (const child of node.children) {
-                resetVisibility(child);
-            }
-        };
-
-        const markVisibility = (node: TreeNode): boolean => {
-            // const pathSegments = node.path?.toLowerCase().split("/") ?? [];
-            // const pathMatch = pathSegments.some(segment => segment.includes(trimmed));
-            // const contentMatch = node.content?.toLowerCase().includes(trimmed) ?? false;
-            // const isMatch = node.isLeaf && (pathMatch || contentMatch);
-            const isMatch = node.isLeaf && pred(node);
-
-            let childrenMatch = false;
-
-
-            for (const child of node.children) {
-                const childMatches = markVisibility(child);
-                if (childMatches) childrenMatch = true;
-            }
-
-
-            const state = this.getOrCreateNodeViewState(node.path);
-            state.isVisible = isMatch || childrenMatch;
-
-            Logger.debug(ENABLE_LOG_FILTER, `[filterTree] node="${node.path}", isLeaf=${node.isLeaf}, isMatch=${isMatch}, childrenMatches=${childrenMatch}`);
-            return state.isVisible;
-
-        };
-
         if (trimmed.length === 0) {
             for (const node of this.originalHierarchy) {
-                resetVisibility(node);
+                this.resetVisibilityForTree(node);
             }
         } else {
             for (const node of this.originalHierarchy) {
-                markVisibility(node);
+                this.markVisibilityForTree(node, pred);
             }
         }
 
