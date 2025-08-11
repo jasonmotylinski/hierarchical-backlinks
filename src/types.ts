@@ -2,6 +2,10 @@ import { SearchMatches } from "obsidian";
 import { TreeNode } from "./treeNode";
 import { TreeNodeView } from "./treeNodeView";
 
+export interface HierarchicalBacklinksSettings {
+  toggleLeafNodes: boolean;
+}
+
 export type NodeId = string; // Node path used as unique identifier
 
 // Implemented in TreeNode
