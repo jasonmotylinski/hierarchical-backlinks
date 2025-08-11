@@ -75,6 +75,26 @@ export class HierarchicalBacklinksView extends ItemView {
         this.updateSortOrder(this.sortDescending);
     }
 
+    register_events() {
+        this.plugin.registerEvent(this.app.metadataCache.on("changed", () => {
+            this.initialize();
+        }));
+
+        this.plugin.registerEvent(this.app.workspace.on("layout-change", () => {
+            this.initialize();
+        }));
+
+        this.plugin.registerEvent(this.app.workspace.on("file-open", () => {
+            this.initialize();
+        }));
+
+    }
+
+    async onOpen() {
+        this.register_events();
+        return this.initialize();
+    }
+
     createPane(container: Element, hierarchy: TreeNode[]) {
         Logger.debug(ENABLE_LOG_SORT, `[createPane] rendering with ${hierarchy.length} root nodes`);
         Logger.debug(ENABLE_LOG_SORT, "[createPane] START: resetting collected views");
@@ -182,6 +202,30 @@ export class HierarchicalBacklinksView extends ItemView {
         }
     }
 
+    /** Deep clone the hierarchy so we can sort without mutating originals */
+    private cloneHierarchy(nodes: TreeNode[]): TreeNode[] {
+        return nodes.map((n) => ({
+            ...n,
+            // recursively clone children
+            children: this.cloneHierarchy(n.children || []),
+            setFrontmatter: n.setFrontmatter, // Include the required method
+        }));
+    }
+
+    /** Recursively sort nodes by the leaf name of their path (A→Z or Z→A). */
+    private deepSortHierarchy(models: TreeNode[], descending: boolean): void {
+        const nameOf = (n: TreeNode) => (n.path?.split("/").pop() ?? "").toLowerCase();
+        const cmp = (a: TreeNode, b: TreeNode) =>
+            descending ? nameOf(b).localeCompare(nameOf(a)) : nameOf(a).localeCompare(nameOf(b));
+
+        models.sort(cmp);
+        for (const m of models) {
+            if (Array.isArray(m.children) && m.children.length > 0) {
+                this.deepSortHierarchy(m.children, descending);
+            }
+        }
+    }
+
     private updateSortOrder(descending: boolean) {
         Logger.debug(ENABLE_LOG_SORT, `[updateSortOrder] Current=${this.sortDescending}, New=${descending}`);
         this.sortDescending = descending;
@@ -276,50 +320,6 @@ export class HierarchicalBacklinksView extends ItemView {
         // Update visibility of treeNodeViews in-place (roots only; method recurses into children)
         for (const v of this.treeNodeViews) {
             v.applyNodeViewStateToUI();
-        }
-    }
-
-    register_events() {
-        this.plugin.registerEvent(this.app.metadataCache.on("changed", () => {
-            this.initialize();
-        }));
-
-        this.plugin.registerEvent(this.app.workspace.on("layout-change", () => {
-            this.initialize();
-        }));
-
-        this.plugin.registerEvent(this.app.workspace.on("file-open", () => {
-            this.initialize();
-        }));
-
-    }
-
-    async onOpen() {
-        this.register_events();
-        return this.initialize();
-    }
-
-    /** Deep clone the hierarchy so we can sort without mutating originals */
-    private cloneHierarchy(nodes: TreeNode[]): TreeNode[] {
-        return nodes.map((n) => ({
-            ...n,
-            // recursively clone children
-            children: this.cloneHierarchy(n.children || []),
-            setFrontmatter: n.setFrontmatter, // Include the required method
-        }));
-    }
-
-    /** Recursively sort nodes by the leaf name of their path (A→Z or Z→A). */
-    private deepSortHierarchy(models: TreeNode[], descending: boolean): void {
-        const nameOf = (n: TreeNode) => (n.path?.split("/").pop() ?? "").toLowerCase();
-        const cmp = (a: TreeNode, b: TreeNode) =>
-            descending ? nameOf(b).localeCompare(nameOf(a)) : nameOf(a).localeCompare(nameOf(b));
-
-        models.sort(cmp);
-        for (const m of models) {
-            if (Array.isArray(m.children) && m.children.length > 0) {
-                this.deepSortHierarchy(m.children, descending);
-            }
         }
     }
 
