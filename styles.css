@@ -6,13 +6,26 @@ available in the app when your plugin is enabled.
 If your plugin does not need CSS, delete this file.
 
 */
-.workspace-leaf-content[data-type='hierarchical-backlinks-view'] .view-content{
+.workspace-leaf-content[data-type='hierarchical-backlinks'] .view-content{
     padding: 0px;
 }
 
-.workspace-leaf-content[data-type='hierarchical-backlinks-view'] .view-content .backllink-item {
+.workspace-leaf-content[data-type='hierarchical-backlinks'] .view-content .backlink-item {
     padding-left: 24px;
 }
 .view-content {
     padding: 0px !important;
 }
+
+/* Bold a node if it has a matches block immediately after it (sibling of .tree-item-self) */
+.workspace-leaf-content[data-type='hierarchical-backlinks']
+  .tree-item > .tree-item-self:has(+ .search-result-file-matches) .tree-item-inner {
+  font-weight: 800 !important;
+  /*font-style: italic;*/
+}
+
+/* TEMP: show a dashed outline on rows that match the selector (remove after verifying) */
+/* .workspace-leaf-content[data-type='hierarchical-backlinks']
+  .tree-item > .tree-item-self:has(+ .search-result-file-matches) {
+  outline: 1px dashed rgba(120,120,120,0.6);
+} */
