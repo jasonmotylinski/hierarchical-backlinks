@@ -277,20 +277,19 @@ export class HierarchicalBacklinksView extends ItemView {
         pred: (n: TreeNode) => boolean
     ): boolean {
         const isMatch = node.isLeaf && pred(node);
-
-        let childrenMatch = false;
-        for (const child of node.children) {
-            const childMatches = this.markVisibilityForTree(child, pred);
-            if (childMatches) childrenMatch = true;
-        }
-
+    
+        const childrenMatch = node.children.some(child =>
+            this.markVisibilityForTree(child, pred)
+        );
+    
         const state = this.getOrCreateNodeViewState(node.path);
         state.isVisible = isMatch || childrenMatch;
-
+    
         Logger.debug(
             ENABLE_LOG_FILTER,
             `[filterTree] node="${node.path}", isLeaf=${node.isLeaf}, isMatch=${isMatch}, childrenMatches=${childrenMatch}`
         );
+    
         return state.isVisible;
     }
 
