@@ -12,6 +12,7 @@ import { BacklinksLayout } from "./ui/layout";
 import { getOrCreateNodeViewState } from "./viewState";
 
 const ENABLE_LOG_FILTER = false; // Set to false to disable logging in filter-related methods
+const ENABLE_LOG_FILTER_VERBOSE = false; // Ultra-verbose per-node logging.
 const ENABLE_LOG_SORT = false; // Set to false to disable logging in sort-related methods
 
 export const VIEW_TYPE = "hierarchical-backlinks";
@@ -29,6 +30,7 @@ export class HierarchicalBacklinksView extends ItemView {
     private flattenedHierarchy: TreeNode[] = [];
     private isSortRestore: boolean = false;
     private sortSnapshot?: Map<string, { isCollapsed: boolean; isVisible: boolean }>;
+    private searchSeq: number = 0;
     constructor(leaf: WorkspaceLeaf, plugin: HierarchicalBacklinksPlugin) {
         super(leaf);
         this.plugin = plugin;
@@ -184,7 +186,6 @@ export class HierarchicalBacklinksView extends ItemView {
             v.applyNodeViewStateToUI();
         }
         Logger.debug(ENABLE_LOG_SORT, "[createPane] re-applied collapsed/visibility states to", this.treeNodeViews.length, "nodes");
-        Logger.debug(ENABLE_LOG_SORT, "[createPane] re-applied collapsed/visibility states to", this.treeNodeViews.length, "nodes");
         Logger.debug(ENABLE_LOG_SORT, "[createPane] DONE with createPane");
     }
 
@@ -274,29 +275,95 @@ export class HierarchicalBacklinksView extends ItemView {
 
     private markVisibilityForTree(
         node: TreeNode,
-        pred: (n: TreeNode) => boolean
+        pred: (n: TreeNode) => boolean,
+        sid?: number
     ): boolean {
         const isMatch = node.isLeaf && pred(node);
-    
-        const childrenMatch = node.children.some(child =>
-            this.markVisibilityForTree(child, pred)
-        );
-    
+
+        const predRaw = pred(node);            // does the predicate think this node matches?
+        const leafGate = node.isLeaf;          // is the node a leaf?
+        const finMatch = leafGate && predRaw;   // your current behavior
+
+        Logger.debug(ENABLE_LOG_FILTER_VERBOSE,
+            `[testTerm:diag] node="${node.path}" leaf=${leafGate} predRaw=${predRaw} finalMatch=${finMatch}`);
+
+        // before:
+        // const childrenMatch = node.children.some(child =>
+        //   this.markVisibilityForTree(child, pred, sid)
+        // );
+
+        let childrenMatch = false;
+        for (let i = 0; i < node.children.length; i++) {
+            const child = node.children[i];
+            const childVisible = this.markVisibilityForTree(child, pred, sid);
+
+            Logger.debug(
+                ENABLE_LOG_FILTER_VERBOSE,
+                `[children-visit${sid ? ":" + sid : ""}] parent="${node.path}" idx=${i}/${node.children.length - 1} child="${child.path}" -> visible=${childVisible}`
+            );
+
+            // Aggregate visibility across ALL children; do not short-circuit so
+            // every child's visibility state gets updated during this pass.
+            childrenMatch = childrenMatch || childVisible;
+        }
+
         const state = this.getOrCreateNodeViewState(node.path);
-        state.isVisible = isMatch || childrenMatch;
-    
+        const prevVisible = state.isVisible !== false; // default true if undefined
+        const nextVisible = isMatch || childrenMatch;
+        state.isVisible = nextVisible;
+
         Logger.debug(
-            ENABLE_LOG_FILTER,
-            `[filterTree] node="${node.path}", isLeaf=${node.isLeaf}, isMatch=${isMatch}, childrenMatches=${childrenMatch}`
+            ENABLE_LOG_FILTER_VERBOSE,
+            `[filterTree${sid ? ":" + sid : ""}] node="${node.path}", isLeaf=${node.isLeaf}, isMatch=${isMatch}, childrenMatches=${childrenMatch}, visible ${prevVisible} -> ${nextVisible}`
         );
-    
+
         return state.isVisible;
+    }
+
+    private takeVisibilitySnapshot(nodes: TreeNode[]): Map<string, boolean> {
+        const snap = new Map<string, boolean>();
+        const walk = (n: TreeNode) => {
+            const st = this.getOrCreateNodeViewState(n.path);
+            const vis = st.isVisible !== false; // default true
+            snap.set(n.path, vis);
+            for (const c of n.children) walk(c);
+        };
+        for (const r of nodes) walk(r);
+        return snap;
+    }
+
+    private summarizeVisibility(nodes: TreeNode[]): { total: number; visible: number; visibleLeaves: number; visibleFolders: number } {
+        let total = 0, visible = 0, visibleLeaves = 0, visibleFolders = 0;
+        const walk = (n: TreeNode) => {
+            total++;
+            const st = this.getOrCreateNodeViewState(n.path);
+            const vis = st.isVisible !== false; // default true
+            if (vis) {
+                visible++;
+                if (n.isLeaf) visibleLeaves++; else visibleFolders++;
+            }
+            for (const c of n.children) walk(c);
+        };
+        for (const r of nodes) walk(r);
+        return { total, visible, visibleLeaves, visibleFolders };
     }
 
     private filterBacklinks(query: string) {
         const trimmed = query.trim().toLowerCase();
+        const sid = ++this.searchSeq;
+
+        Logger.debug(ENABLE_LOG_FILTER, `[filterBacklinks:${sid}] ROOTS=${this.originalHierarchy.length} flattened=${this.isFlattened}`);
+        const allPaths: string[] = [];
+        const collect = (n: TreeNode) => { allPaths.push(n.path); n.children.forEach(collect); };
+        this.originalHierarchy.forEach(collect);
+        Logger.debug(ENABLE_LOG_FILTER_VERBOSE, `[filterBacklinks:${sid}] VISITABLE nodes=${allPaths.length} sample[0..10]=`, allPaths.slice(0, 10));
 
         uiState.query = trimmed;
+
+        Logger.debug(ENABLE_LOG_FILTER, `[filterBacklinks:${sid}] BEGIN query="${trimmed}"`);
+
+        // Snapshot visibility before filtering
+        const before = this.takeVisibilitySnapshot(this.originalHierarchy);
 
         // Build search predicate (bare terms target content by default)
         const { clauses } = parseSearchQuery(trimmed, "default");
@@ -308,11 +375,23 @@ export class HierarchicalBacklinksView extends ItemView {
             }
         } else {
             for (const node of this.originalHierarchy) {
-                this.markVisibilityForTree(node, pred);
+                this.markVisibilityForTree(node, pred, sid);
             }
         }
 
-        Logger.debug(ENABLE_LOG_FILTER, `[filterBacklinks] Query: "${trimmed}"`);
+        // Snapshot visibility after filtering and compute diff
+        const after = this.takeVisibilitySnapshot(this.originalHierarchy);
+        let changed = 0;
+        for (const [path, prev] of before.entries()) {
+            const curr = after.get(path);
+            if (curr !== prev) changed++;
+        }
+
+        const summary = this.summarizeVisibility(this.originalHierarchy);
+        Logger.debug(
+            ENABLE_LOG_FILTER,
+            `[filterBacklinks:${sid}] END query="${trimmed}" | changed=${changed} | total=${summary.total}, visible=${summary.visible} (leaves=${summary.visibleLeaves}, folders=${summary.visibleFolders})`
+        );
 
         // Update visibility of treeNodeViews in-place (roots only; method recurses into children)
         for (const v of this.treeNodeViews) {
