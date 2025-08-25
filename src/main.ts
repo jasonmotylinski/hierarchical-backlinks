@@ -1,12 +1,9 @@
-import { Plugin, WorkspaceLeaf, PluginSettingTab, Setting, App, Notice } from "obsidian";
+import { Plugin, WorkspaceLeaf, Notice } from "obsidian";
+import { HierarchicalBacklinksSettingTab, DEFAULT_SETTINGS } from "./settings"; // Ensure this path is correct
 import { HierarchicalBacklinksView, VIEW_TYPE } from "./view";
 import { uiState } from "./ui/uiState";
-import { HierarchicalBacklinksSettings, LockedTreeSnapshot } from "./types";
+import { HierarchicalBacklinksSettings } from "./types";
 import LockService from "./lockService";
-
-const DEFAULT_SETTINGS: HierarchicalBacklinksSettings = {
-    toggleLeafNodes: false,
-};
 
 export default class HierarchicalBacklinksPlugin extends Plugin {
     settings: HierarchicalBacklinksSettings;
@@ -155,36 +152,5 @@ export default class HierarchicalBacklinksPlugin extends Plugin {
 
     private refreshActiveView() {
         this.withActiveView((v) => v.initialize?.(), { respectLock: false });
-    }
-}
-
-export class HierarchicalBacklinksSettingTab extends PluginSettingTab {
-    plugin: HierarchicalBacklinksPlugin;
-
-    constructor(plugin: HierarchicalBacklinksPlugin) {
-        super(plugin.app, plugin);
-        this.plugin = plugin;
-    }
-
-    display(): void {
-        const { containerEl } = this;
-        containerEl.empty();
-        containerEl.createEl("h2", { text: "Hierarchical Backlinks Settings" });
-
-        new Setting(containerEl)
-            .setName("Hide Content by Default")
-            .setDesc("Next time the plugin is loaded, content will be hidden by default.")
-            .addToggle(toggle =>
-                toggle
-                    .setValue(this.plugin.settings.toggleLeafNodes)
-                    .onChange(async (value) => {
-                        this.plugin.settings.toggleLeafNodes = value;
-                        await this.plugin.saveSettings();
-                    })
-            );
-    }
-
-    get toggleLeafNodes(): boolean {
-        return this.plugin.settings.toggleLeafNodes;
     }
 }
