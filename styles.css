@@ -52,3 +52,62 @@ If your plugin does not need CSS, delete this file.
   text-transform: uppercase;
   letter-spacing: .04em;
 }
+
+/* Active lock button — clean, consistent red tone */
+:root {
+  /* Theme-aware: prefer the theme's red, then Obsidian's text-error, then a fallback */
+  --hb-lock-active-color: var(--color-red, var(--text-error, #cc3333));
+  /* Slightly stronger on hover; computed from the base color when supported */
+  --hb-lock-active-color-hover: var(--hb-lock-active-color);
+}
+
+.workspace-leaf-content[data-type='hierarchical-backlinks']
+.nav-header .nav-action-button.hb-lock-btn.is-active {
+  color: var(--hb-lock-active-color);
+  /* Fallback background if color-mix isn't supported */
+  background-color: rgba(204, 51, 51, 0.15);
+  /* Preferred: background derived from current theme red */
+  background-color: color-mix(in srgb, var(--hb-lock-active-color) 20%, transparent);
+  border-radius: 4px; /* optional, soften corners */
+}
+
+.workspace-leaf-content[data-type='hierarchical-backlinks']
+.nav-header .nav-action-button.hb-lock-btn.is-active svg {
+  stroke: currentColor;   /* lucide uses strokes */
+  fill: none;             /* avoid muddy fills */
+}
+
+/* Subtle hover state so it feels alive */
+.workspace-leaf-content[data-type='hierarchical-backlinks']
+.nav-header .nav-action-button.hb-lock-btn.is-active:hover {
+  color: var(--hb-lock-active-color-hover);
+  background-color: color-mix(in srgb, var(--hb-lock-active-color) 30%, transparent);
+}
+
+/* Theme-aware lock color (already defined earlier) */
+:root {
+  --hb-lock-active-color: var(--color-red, var(--text-error, #cc3333));
+}
+
+/* Make the LOCKED badge use the *same* color/background as the active lock button */
+.workspace-leaf-content[data-type='hierarchical-backlinks'] .hb-locked-badge {
+  color: var(--hb-lock-active-color);
+  /* fallback first, then color-mix if supported */
+  background-color: rgba(204, 51, 51, 0.15);
+  background-color: color-mix(in srgb, var(--hb-lock-active-color) 20%, transparent);
+
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 10px;
+  line-height: 1.4;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Optional: subtle hover to match the button */
+.workspace-leaf-content[data-type='hierarchical-backlinks'] .hb-locked-badge:hover {
+  background-color: color-mix(in srgb, var(--hb-lock-active-color) 30%, transparent);
+}

@@ -63,6 +63,7 @@ export class BacklinksLayout {
 
         // Locked badge (hidden by default)
         const lockBadge = headerEl.createSpan({ cls: "hb-locked-badge", text: "Locked" });
+        lockBadge.addClass("hb-lock-btn"); // share style with lock button
         lockBadge.style.display = callbacks.initialLocked ? "" : "none";
 
         // Restore toggle states from uiState
@@ -101,13 +102,14 @@ export class BacklinksLayout {
 
         navButtonsView.lockCollapseButton.on('collapse-click', () => {
             locked = navButtonsView.lockCollapseButton.isCollapsed();
-            // Update visual affordances in the layout
             if (locked) {
                 scDiv.classList.add('hb-locked');
                 lockBadge.style.display = '';
+                navButtonsView.lockCollapseButton.getElement().addClass('hb-lock-active');
             } else {
                 scDiv.classList.remove('hb-locked');
                 lockBadge.style.display = 'none';
+                navButtonsView.lockCollapseButton.getElement().removeClass('hb-lock-active');
             }
             callbacks.onLockToggle?.(locked);
         });

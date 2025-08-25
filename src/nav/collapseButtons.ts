@@ -35,5 +35,7 @@ export class CollapseButton extends EventEmitter  {
           this.button.removeClass("is-active");
       }
   }
- 
+  public getElement(): HTMLDivElement {
+      return this.button;
+  }
 }
