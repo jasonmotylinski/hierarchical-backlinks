@@ -1,7 +1,7 @@
 import { Plugin, WorkspaceLeaf, PluginSettingTab, Setting, App } from "obsidian";
 import { HierarchicalBacklinksView, VIEW_TYPE } from "./view";
 import { uiState } from "./ui/uiState";
-import { HierarchicalBacklinksSettings } from "./types";
+import { HierarchicalBacklinksSettings, LockedTreeSnapshot } from "./types";
 
 const DEFAULT_SETTINGS: HierarchicalBacklinksSettings = {
     toggleLeafNodes: false,
@@ -9,6 +9,7 @@ const DEFAULT_SETTINGS: HierarchicalBacklinksSettings = {
 
 export default class HierarchicalBacklinksPlugin extends Plugin {
     settings: HierarchicalBacklinksSettings;
+    public lockedTrees: Map<string, LockedTreeSnapshot> = new Map();
 
     async onload() {
         const data = (await this.loadData()) ?? {};

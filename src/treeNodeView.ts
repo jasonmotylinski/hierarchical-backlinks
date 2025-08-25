@@ -74,7 +74,11 @@ export class TreeNodeView {
         setIcon(this.treeItemIcon, 'right-triangle');
 
         this.treeItemIcon.addEventListener("click", (e) => {
-
+            e.preventDefault();
+            e.stopPropagation();
+            if (this.viewState?.isLocked) {
+                return; // strict lock: ignore triangle clicks
+            }
             this.toggle();
         });
         treeItemInner.addEventListener("click", (e) => {
@@ -113,7 +117,6 @@ export class TreeNodeView {
     }
 
     listToggleOn() {
-        if (this.viewState.isLocked) return;
         // Always collapse the node when toggling on.
         // Collapse this node and all descendants; also mark the list as collapsed
         uiState.listCollapsed = true;
@@ -128,7 +131,6 @@ export class TreeNodeView {
     }
 
     listToggleOff() {
-        if (this.viewState.isLocked) return;
 
         // Expand according to contentCollapsed for leaves; parents expand
         uiState.listCollapsed = false;
@@ -148,7 +150,6 @@ export class TreeNodeView {
     }
 
     contentHiddenToggleOn() {
-        if (this.viewState.isLocked) return;
 
         // When content is hidden, collapse leaf nodes; keep parents as-is
         uiState.contentCollapsed = true;
@@ -170,7 +171,6 @@ export class TreeNodeView {
     }
 
     contentHiddenToggleOff() {
-        if (this.viewState.isLocked) return;
 
         uiState.contentCollapsed = false;
         const state = this.getOrCreateNodeViewState();
@@ -198,7 +198,7 @@ export class TreeNodeView {
     }
 
     toggle() {
-        if (this.viewState.isLocked) return;
+        if (this.viewState?.isLocked) return; // strict lock: no expand/collapse
         const state = this.getOrCreateNodeViewState();
         state.isCollapsed = !state.isCollapsed;
 

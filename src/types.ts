@@ -71,3 +71,8 @@ export interface ContentReference {
   path: string;
 }
 
+// === Lock snapshot types ===
+export type LockedTreeSnapshot = {
+  hierarchy: TreeNode[];    // the frozen structure
+  viewState: ViewState;     // per-node collapse/visibility
+};

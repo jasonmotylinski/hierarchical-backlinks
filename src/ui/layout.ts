@@ -60,6 +60,9 @@ export class BacklinksLayout {
         navButtonsView.contentCollapseButton.setCollapsed(uiState.contentCollapsed);
         navButtonsView.sortCollapseButton.setCollapsed(uiState.sortCollapsed);
         navButtonsView.flattenCollapseButton.setCollapsed(uiState.flattenCollapsed);
+        // Reflect snapshot/locked state provided by the view
+        navButtonsView.lockCollapseButton.setCollapsed(!!callbacks.initialLocked);
+
 
         navButtonsView.listCollapseButton.on("collapse-click", () => {
             const isOn = navButtonsView.listCollapseButton.isCollapsed();
