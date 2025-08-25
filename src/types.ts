@@ -22,9 +22,11 @@ export interface TreeNodeData {
 export interface NodeViewState {
   isCollapsed: boolean;
   isVisible: boolean;
+  
 }
 export interface ViewState {
   nodeStates: Map<NodeId, NodeViewState>;
+  isLocked: boolean;
 }
 
 export interface BacklinksLayoutHandlers {
@@ -34,7 +36,9 @@ export interface BacklinksLayoutHandlers {
   onSearchChange: (query: string) => void;
   onSortToggle: (descending: boolean) => void;
   onFlattenToggle: (flattened: boolean) => void;
+  onLockToggle: (locked: boolean) => void;
   initialFlattened: boolean;
+  initialLocked: boolean;
 }
 
 export interface Point {

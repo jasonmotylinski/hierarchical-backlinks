@@ -85,6 +85,11 @@ export class BacklinksLayout {
             callbacks.onFlattenToggle(isOn);
         });
 
+        navButtonsView.lockCollapseButton.on('collapse-click', () => {
+            const locked = navButtonsView.lockCollapseButton.isCollapsed();
+            callbacks.onLockToggle?.(locked);
+        });
+
         // Search bar lives inside the header
         const searchBar = new SearchBar(headerEl, "Search...");
         searchBar.setValue(uiState.query ?? "");

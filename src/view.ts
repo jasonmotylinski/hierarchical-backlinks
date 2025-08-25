@@ -59,6 +59,7 @@ export class HierarchicalBacklinksView extends ItemView {
             this.currentNoteId = noteId;
             this.viewState = {
                 nodeStates: new Map<string, NodeViewState>(),
+                isLocked: false,
             };
         }
         const file = new File(this.app, activeFile);
@@ -145,6 +146,12 @@ export class HierarchicalBacklinksView extends ItemView {
             onFlattenToggle: (flattened: boolean) => {
                 this.toggleFlatten(flattened);
             },
+            onLockToggle: (locked: boolean) => {
+                if (this.viewState) {
+                    this.viewState.isLocked = locked;
+                }
+            },
+            initialLocked: this.viewState?.isLocked ?? false,
             initialFlattened: this.isFlattened,
         });
         Logger.debug(ENABLE_LOG_SORT, "[createPane] layout.mount finished; collected views:", this.treeNodeViews.length);
@@ -260,7 +267,7 @@ export class HierarchicalBacklinksView extends ItemView {
 
     private getOrCreateNodeViewState(nodeId: string): NodeViewState {
         if (!this.viewState) {
-            this.viewState = { nodeStates: new Map<string, NodeViewState>() };
+            this.viewState = { nodeStates: new Map<string, NodeViewState>(), isLocked: false };
         }
         return getOrCreateNodeViewState(this.viewState, nodeId);
     }
