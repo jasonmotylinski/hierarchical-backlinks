@@ -29,3 +29,26 @@ If your plugin does not need CSS, delete this file.
   .tree-item > .tree-item-self:has(+ .search-result-file-matches) {
   outline: 1px dashed rgba(120,120,120,0.6);
 } */
+
+/* Slightly darker tree while locked */
+.search-result-container.hb-locked {
+  opacity: 0.75;
+}
+
+/* Optional: triangle looks inactive (you already block clicks in JS) */
+.search-result-container.hb-locked .tree-item-icon {
+  cursor: not-allowed;
+  filter: grayscale(0.2);
+}
+
+/* Optional: tiny badge in header */
+.nav-header .hb-locked-badge {
+  margin-left: 8px;
+  padding: 1px 6px;
+  font-size: 10px;
+  border-radius: 999px;
+  background: var(--background-modifier-border);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}

@@ -55,6 +55,10 @@ export class BacklinksLayout {
             (headerWrapper.querySelector(".nav-header") as HTMLDivElement) ||
             (headerWrapper as HTMLDivElement);
 
+        // Locked badge (hidden by default)
+        const lockBadge = headerEl.createSpan({ cls: "hb-locked-badge", text: "Locked" });
+        lockBadge.style.display = callbacks.initialLocked ? "" : "none";
+
         // Restore toggle states from uiState
         navButtonsView.listCollapseButton.setCollapsed(uiState.listCollapsed);
         navButtonsView.contentCollapseButton.setCollapsed(uiState.contentCollapsed);
@@ -63,6 +67,7 @@ export class BacklinksLayout {
         // Reflect snapshot/locked state provided by the view
         navButtonsView.lockCollapseButton.setCollapsed(!!callbacks.initialLocked);
 
+        let locked = !!callbacks.initialLocked;
 
         navButtonsView.listCollapseButton.on("collapse-click", () => {
             const isOn = navButtonsView.listCollapseButton.isCollapsed();
@@ -89,7 +94,15 @@ export class BacklinksLayout {
         });
 
         navButtonsView.lockCollapseButton.on('collapse-click', () => {
-            const locked = navButtonsView.lockCollapseButton.isCollapsed();
+            locked = navButtonsView.lockCollapseButton.isCollapsed();
+            // Update visual affordances in the layout
+            if (locked) {
+                scDiv.classList.add('hb-locked');
+                lockBadge.style.display = '';
+            } else {
+                scDiv.classList.remove('hb-locked');
+                lockBadge.style.display = 'none';
+            }
             callbacks.onLockToggle?.(locked);
         });
 
@@ -137,6 +150,8 @@ export class BacklinksLayout {
         const scDiv = scrollContainer as HTMLDivElement;
         this.rootContainerEl = scDiv;
         this.rootWrappers = new Map();
+        // Dim the tree when locked (CSS provides the effect)
+        if (callbacks.initialLocked) scDiv.classList.add("hb-locked");
         scDiv.style.flex = "1 1 auto";
         scDiv.style.overflow = "auto"; // only this area scrolls
         scDiv.style.paddingRight = "0";
