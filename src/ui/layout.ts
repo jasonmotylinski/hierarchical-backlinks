@@ -18,191 +18,238 @@ export class BacklinksLayout {
     private callbacks?: BacklinksLayoutHandlers;
     private nav?: NavButtonsView | null = null;
     private search?: SearchBar | null = null;
+    private lockBadgeEl: HTMLSpanElement | null = null;
+
+    private headerEl: HTMLDivElement | null = null;
+    private paneEl: HTMLDivElement | null = null;
+    private rootEl: HTMLDivElement | null = null;
+
+    public setCallbacks(callbacks: BacklinksLayoutHandlers) {
+      this.callbacks = callbacks;
+    }
 
     /**
-     * Builds the entire backlinks pane UI inside the provided container.
-     * Handles:
-     *  - Preparing `.view-content` (flex column, hidden overflow)
-     *  - Header (nav buttons + search)
-     *  - Scroll container and section header
-     *  - Rendering nodes via a factory callback
-     *  - Applying current toggle states
-     *  - Emitting search changes to let the view filter
+     * Mount the header (nav buttons + search + badge) once and keep it.
+     * Also prepares the pane & scroll container; does not render the tree.
      */
-    mount(
-        container: HTMLElement,
-        hierarchy: TreeNode[],
-        callbacks: BacklinksLayoutHandlers
+    public mountHeader(
+      container: HTMLElement,
+      callbacks: BacklinksLayoutHandlers,
+      initialLocked: boolean
     ): {
-        treeNodeViews: TreeNodeView[];
-        elements: {
-            root: HTMLDivElement;
-            pane: HTMLDivElement;
-            scrollContainer: HTMLDivElement;
-            headerEl: HTMLDivElement;
-        };
+      elements: { root: HTMLDivElement; pane: HTMLDivElement; scrollContainer: HTMLDivElement; headerEl: HTMLDivElement };
     } {
-        this.callbacks = callbacks;
+      this.callbacks = callbacks;
 
-        // Prepare the outer .view-content like the original initialize()
-        const root = container as HTMLDivElement;
+      if (!this.rootEl) {
+        // Prepare the outer .view-content
+        const root = (container as HTMLDivElement);
         root.empty();
         root.style.display = "flex";
         root.style.flexDirection = "column";
         root.style.height = "100%";
-        root.style.overflow = "hidden"; // only the inner pane should scroll
+        root.style.overflow = "hidden"; // only inner pane scrolls
+        this.rootEl = root;
 
         // Header (nav buttons + search), outside the scroll area
         const headerWrapper = root.createDiv();
         const navButtonsView = new NavButtonsView(this.app, headerWrapper);
         navButtonsView.render();
         this.nav = navButtonsView;
-        const headerEl =
-            (headerWrapper.querySelector(".nav-header") as HTMLDivElement) ||
-            (headerWrapper as HTMLDivElement);
+        this.headerEl = (headerWrapper.querySelector('.nav-header') as HTMLDivElement) || (headerWrapper as HTMLDivElement);
+
+        // Keep editor focus + prevent leaf activation when clicking the navbar (bubble phase)
+        this.headerEl.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); });
+        this.headerEl.addEventListener('mousedown', (e) => { e.preventDefault(); e.stopPropagation(); });
 
         // Locked badge (hidden by default)
-        const lockBadge = headerEl.createSpan({ cls: "hb-locked-badge", text: "Locked" });
-        lockBadge.addClass("hb-lock-btn"); // share style with lock button
-        lockBadge.style.display = callbacks.initialLocked ? "" : "none";
+        this.lockBadgeEl = this.headerEl.createSpan({ cls: 'hb-locked-badge', text: 'Locked' });
+        this.lockBadgeEl.addClass('hb-lock-btn');
+
+        // Backlink pane (container for header+scroll)
+        const pane = root.createDiv({ cls: 'backlink-pane node-insert-event' });
+        const paneDiv = pane as HTMLDivElement;
+        paneDiv.style.position = 'relative';
+        paneDiv.style.display = 'flex';
+        paneDiv.style.flexDirection = 'column';
+        paneDiv.style.paddingRight = '0';
+        paneDiv.style.marginRight = '0';
+        paneDiv.style.flex = '1 1 auto';
+        this.paneEl = paneDiv;
+
+        // Scroll container holds the section header + results
+        const scrollContainer = paneDiv.createDiv({ cls: 'search-result-container' });
+        const scDiv = scrollContainer as HTMLDivElement;
+        scDiv.style.flex = '1 1 auto';
+        scDiv.style.overflow = 'auto';
+        scDiv.style.paddingRight = '0';
+        scDiv.style.marginRight = '0';
+        this.rootContainerEl = scDiv;
 
         // Restore toggle states from uiState
-        navButtonsView.listCollapseButton.setCollapsed(uiState.listCollapsed);
-        navButtonsView.contentCollapseButton.setCollapsed(uiState.contentCollapsed);
-        navButtonsView.sortCollapseButton.setCollapsed(uiState.sortCollapsed);
-        navButtonsView.flattenCollapseButton.setCollapsed(uiState.flattenCollapsed);
+        this.nav.listCollapseButton.setCollapsed(uiState.listCollapsed);
+        this.nav.contentCollapseButton.setCollapsed(uiState.contentCollapsed);
+        this.nav.sortCollapseButton.setCollapsed(uiState.sortCollapsed);
+        this.nav.flattenCollapseButton.setCollapsed(uiState.flattenCollapsed);
         // Reflect snapshot/locked state provided by the view
-        navButtonsView.lockCollapseButton.setCollapsed(!!callbacks.initialLocked);
+        this.nav.lockCollapseButton.setCollapsed(!!initialLocked);
 
-        let locked = !!callbacks.initialLocked;
+        // Apply locked visuals
+        if (initialLocked) {
+          this.rootContainerEl.classList.add('hb-locked');
+          if (this.lockBadgeEl) this.lockBadgeEl.style.display = '';
+          this.nav.lockCollapseButton.getElement().addClass('hb-lock-active');
+        } else {
+          if (this.lockBadgeEl) this.lockBadgeEl.style.display = 'none';
+          this.rootContainerEl.classList.remove('hb-locked');
+          this.nav.lockCollapseButton.getElement().removeClass('hb-lock-active');
+        }
 
-        navButtonsView.listCollapseButton.on("collapse-click", () => {
-            const isOn = navButtonsView.listCollapseButton.isCollapsed();
-            uiState.listCollapsed = isOn;
-            callbacks.onListToggle(isOn);
+        // Wire navbar callbacks to the current `this.callbacks`
+        this.nav.listCollapseButton.on('collapse-click', () => {
+          const isOn = this.nav!.listCollapseButton.isCollapsed();
+          uiState.listCollapsed = isOn;
+          this.callbacks?.onListToggle(isOn);
         });
 
-        navButtonsView.contentCollapseButton.on("collapse-click", () => {
-            const isOn = navButtonsView.contentCollapseButton.isCollapsed();
-            uiState.contentCollapsed = isOn;
-            callbacks.onContentToggle(isOn);
+        this.nav.contentCollapseButton.on('collapse-click', () => {
+          const isOn = this.nav!.contentCollapseButton.isCollapsed();
+          uiState.contentCollapsed = isOn;
+          this.callbacks?.onContentToggle(isOn);
         });
 
-        navButtonsView.sortCollapseButton.on("collapse-click", () => {
-            const isOn = navButtonsView.sortCollapseButton.isCollapsed();
-            uiState.sortCollapsed = isOn;
-            callbacks.onSortToggle(isOn);
+        this.nav.sortCollapseButton.on('collapse-click', () => {
+          const isOn = this.nav!.sortCollapseButton.isCollapsed();
+          uiState.sortCollapsed = isOn;
+          this.callbacks?.onSortToggle(isOn);
         });
 
-        navButtonsView.flattenCollapseButton.on('collapse-click', () => {
-            const isOn = navButtonsView.flattenCollapseButton.isCollapsed();
-            uiState.flattenCollapsed = isOn;
-            callbacks.onFlattenToggle(isOn);
+        this.nav.flattenCollapseButton.on('collapse-click', () => {
+          const isOn = this.nav!.flattenCollapseButton.isCollapsed();
+          uiState.flattenCollapsed = isOn;
+          this.callbacks?.onFlattenToggle(isOn);
         });
 
-        navButtonsView.lockCollapseButton.on('collapse-click', () => {
-            locked = navButtonsView.lockCollapseButton.isCollapsed();
-            if (locked) {
-                scDiv.classList.add('hb-locked');
-                lockBadge.style.display = '';
-                navButtonsView.lockCollapseButton.getElement().addClass('hb-lock-active');
-            } else {
-                scDiv.classList.remove('hb-locked');
-                lockBadge.style.display = 'none';
-                navButtonsView.lockCollapseButton.getElement().removeClass('hb-lock-active');
-            }
-            callbacks.onLockToggle?.(locked);
+        this.nav.lockCollapseButton.on('collapse-click', () => {
+          const locked = this.nav!.lockCollapseButton.isCollapsed();
+          if (locked) {
+            this.rootContainerEl?.classList.add('hb-locked');
+            if (this.lockBadgeEl) this.lockBadgeEl.style.display = '';
+            this.nav!.lockCollapseButton.getElement().addClass('hb-lock-active');
+          } else {
+            this.rootContainerEl?.classList.remove('hb-locked');
+            if (this.lockBadgeEl) this.lockBadgeEl.style.display = 'none';
+            this.nav!.lockCollapseButton.getElement().removeClass('hb-lock-active');
+          }
+          this.callbacks?.onLockToggle?.(locked);
         });
 
         // Search bar lives inside the header
-        const searchBar = new SearchBar(headerEl, "Search...");
+        const searchBar = new SearchBar(this.headerEl, 'Search...');
         this.search = searchBar;
-        searchBar.setValue(uiState.query ?? "");
+        searchBar.setValue(uiState.query ?? '');
 
         const show = uiState.searchCollapsed ?? false;
-        navButtonsView.searchCollapseButton.setCollapsed(show);
-        searchBar.containerEl.style.display = show ? "" : "none";
+        this.nav.searchCollapseButton.setCollapsed(show);
+        searchBar.containerEl.style.display = show ? '' : 'none';
 
-        navButtonsView.searchCollapseButton.on("collapse-click", () => {
-            const isOn = navButtonsView.searchCollapseButton.isCollapsed();
-            uiState.searchCollapsed = isOn;
-            searchBar.containerEl.style.display = isOn ? "" : "none";
-            if (isOn) {
-                const inp = searchBar.containerEl.querySelector("input") as HTMLInputElement | null;
-                inp?.focus();
-            } else {
-                searchBar.setValue("");
-                uiState.query = "";
-                callbacks.onSearchChange("");
-            }
+        this.nav.searchCollapseButton.on('collapse-click', () => {
+          const isOn = this.nav!.searchCollapseButton.isCollapsed();
+          uiState.searchCollapsed = isOn;
+          searchBar.containerEl.style.display = isOn ? '' : 'none';
+          if (isOn) {
+            const inp = searchBar.containerEl.querySelector('input') as HTMLInputElement | null;
+            try { inp?.focus(); } catch (_) {}
+          } else {
+            searchBar.setValue('');
+            uiState.query = '';
+            this.callbacks?.onSearchChange('');
+          }
         });
 
         searchBar.onChange((value) => {
-            const q = value.toLowerCase();
-            uiState.query = q;
-            callbacks.onSearchChange(q);
+          const q = value.toLowerCase();
+          uiState.query = q;
+          this.callbacks?.onSearchChange(q);
         });
-
-        // Backlink pane (container for header+scroll)
-        const pane = root.createDiv({ cls: "backlink-pane node-insert-event" });
-        const paneDiv = pane as HTMLDivElement;
-        paneDiv.style.position = "relative";
-        paneDiv.style.display = "flex";
-        paneDiv.style.flexDirection = "column";
-        // Ensure no right padding/margin so scrollbar is flush
-        paneDiv.style.paddingRight = "0";
-        paneDiv.style.marginRight = "0";
-        paneDiv.style.flex = "1 1 auto"; // fill remaining height under the header
-
-        // Scroll container holds the section header + results
-        const scrollContainer = paneDiv.createDiv({ cls: "search-result-container" });
-        const scDiv = scrollContainer as HTMLDivElement;
-        this.rootContainerEl = scDiv;
-        this.rootWrappers = new Map();
-        // Dim the tree when locked (CSS provides the effect)
-        if (callbacks.initialLocked) scDiv.classList.add("hb-locked");
-        scDiv.style.flex = "1 1 auto";
-        scDiv.style.overflow = "auto"; // only this area scrolls
-        scDiv.style.paddingRight = "0";
-        scDiv.style.marginRight = "0";
-
-        // Section header container for spacing
-        const headerContainer = scDiv.createDiv({ cls: "linked-mentions-header-container" });
-        headerContainer.style.marginBottom = "10px"; // bigger gap below header
-        // optional: headerContainer.style.borderBottom = "1px solid var(--background-modifier-border)";
-
-        const linkedHeader = headerContainer.createDiv({ cls: "tree-item-self" });
-        linkedHeader.style.paddingLeft = "0";
-        linkedHeader.style.marginLeft = "0";
-        linkedHeader.createEl("div", { text: "Linked mentions" }).style.fontWeight = "bold";
-
-        // Render nodes after the header
-        const treeNodeViews: TreeNodeView[] = [];
-        Logger.debug(ENABLE_LOG, "[BacklinksLayout] nodes incoming", hierarchy.length);
-
-        this.roots = hierarchy;
-        if (hierarchy.length === 0) {
-            scDiv.createDiv({ cls: "search-empty-state", text: "No backlinks found." });
-        } else {
-            hierarchy.forEach((node) => {
-                // Create a stable wrapper for each root so we can reorder without remounting views
-                const wrapper = scDiv.createDiv({ cls: "hb-root-wrapper", attr: { "data-node-path": node.path } });
-                const v = callbacks.createTreeNodeView(wrapper as HTMLDivElement, node);
-                v.render();
-                treeNodeViews.push(v);
-                this.rootWrappers.set(node.path, wrapper);
-            });
+      } else {
+        // Header already mounted; just sync lock visuals to the requested initial state
+        this.setLockActive(!!initialLocked);
+        // Sync other buttons to current globals
+        this.setListActive(!!uiState.listCollapsed);
+        this.setContentActive(!!uiState.contentCollapsed);
+        this.setFlattenActive(!!uiState.flattenCollapsed);
+        this.setSortActive(!!uiState.sortCollapsed);
+        // Keep search visibility
+        if (this.search) {
+          const show = uiState.searchCollapsed ?? false;
+          this.nav?.searchCollapseButton.setCollapsed(show);
+          this.search.containerEl.style.display = show ? '' : 'none';
         }
+      }
 
-        // If there is an active query on mount, ask the view to filter
-        if (uiState.query && uiState.query.trim().length > 0) {
-            callbacks.onSearchChange(uiState.query);
-        }
+      return {
+        elements: {
+          root: this.rootEl!,
+          pane: this.paneEl!,
+          scrollContainer: this.rootContainerEl!,
+          headerEl: this.headerEl!,
+        },
+      };
+    }
 
-        return {
-            treeNodeViews,
-            elements: { root, pane: paneDiv, scrollContainer: scDiv, headerEl },
-        };
+    /** Render (or re-render) the tree only; header stays mounted. */
+    public renderTree(hierarchy: TreeNode[]): TreeNodeView[] {
+      if (!this.rootContainerEl) throw new Error('BacklinksLayout.renderTree: scroll container not mounted');
+
+      this.roots = hierarchy;
+
+      // Clear current contents
+      this.rootContainerEl.empty();
+
+      // Section header
+      const headerContainer = this.rootContainerEl.createDiv({ cls: 'linked-mentions-header-container' });
+      headerContainer.style.marginBottom = '10px';
+      const linkedHeader = headerContainer.createDiv({ cls: 'tree-item-self' });
+      linkedHeader.style.paddingLeft = '0';
+      linkedHeader.style.marginLeft = '0';
+      linkedHeader.createEl('div', { text: 'Linked mentions' }).style.fontWeight = 'bold';
+
+      const treeNodeViews: TreeNodeView[] = [];
+      this.rootWrappers = new Map();
+
+      if (hierarchy.length === 0) {
+        this.rootContainerEl.createDiv({ cls: 'search-empty-state', text: 'No backlinks found.' });
+      } else {
+        hierarchy.forEach((node) => {
+          const wrapper = this.rootContainerEl!.createDiv({ cls: 'hb-root-wrapper', attr: { 'data-node-path': node.path } });
+          const v = this.callbacks!.createTreeNodeView(wrapper as HTMLDivElement, node);
+          v.render();
+          treeNodeViews.push(v);
+          this.rootWrappers.set(node.path, wrapper);
+        });
+      }
+
+      // If there is an active query, ask the view to filter again
+      if (uiState.query && uiState.query.trim().length > 0) {
+        this.callbacks?.onSearchChange(uiState.query);
+      }
+
+      return treeNodeViews;
+    }
+
+    mount(
+      container: HTMLElement,
+      hierarchy: TreeNode[],
+      callbacks: BacklinksLayoutHandlers
+    ): {
+      treeNodeViews: TreeNodeView[];
+      elements: { root: HTMLDivElement; pane: HTMLDivElement; scrollContainer: HTMLDivElement; headerEl: HTMLDivElement };
+    } {
+      // Mount header once, then render tree
+      const { elements } = this.mountHeader(container, callbacks, !!callbacks.initialLocked);
+      const treeNodeViews = this.renderTree(hierarchy);
+      return { treeNodeViews, elements };
     }
 
     /** Toggle the search bar: show & focus if hidden; hide & clear if visible. */
@@ -219,7 +266,7 @@ export class BacklinksLayout {
             nav.searchCollapseButton.setCollapsed(true);
             sb.containerEl.style.display = "";
             const inp = sb.containerEl.querySelector("input") as HTMLInputElement | null;
-            try { inp?.focus(); } catch (_) {}
+            try { inp?.focus(); } catch (_) { }
         } else {
             // Hide the search bar and clear value
             nav.searchCollapseButton.setCollapsed(false);
@@ -228,5 +275,41 @@ export class BacklinksLayout {
             uiState.query = "";
             this.callbacks?.onSearchChange?.("");
         }
+    }
+
+    public isSearchVisible(): boolean {
+        return !!this.nav?.searchCollapseButton?.isCollapsed?.();
+      }
+
+    /** Navbar setters — flip UI state without remounting */
+    public setListActive(on: boolean) {
+      this.nav?.listCollapseButton?.setCollapsed(on);
+    }
+
+    public setContentActive(on: boolean) {
+      this.nav?.contentCollapseButton?.setCollapsed(on);
+    }
+
+    public setFlattenActive(on: boolean) {
+      this.nav?.flattenCollapseButton?.setCollapsed(on);
+    }
+
+    public setSortActive(on: boolean) {
+      this.nav?.sortCollapseButton?.setCollapsed(on);
+    }
+
+    public setLockActive(on: boolean) {
+      this.nav?.lockCollapseButton?.setCollapsed(on);
+      const sc = this.rootContainerEl;
+      const btnEl = this.nav?.lockCollapseButton?.getElement();
+      if (on) {
+        sc?.classList.add('hb-locked');
+        if (this.lockBadgeEl) this.lockBadgeEl.style.display = '';
+        btnEl?.addClass('hb-lock-active');
+      } else {
+        sc?.classList.remove('hb-locked');
+        if (this.lockBadgeEl) this.lockBadgeEl.style.display = 'none';
+        btnEl?.removeClass('hb-lock-active');
+      }
     }
 }

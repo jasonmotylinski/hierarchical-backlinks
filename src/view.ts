@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf } from "obsidian";
+import { ItemView, WorkspaceLeaf, MarkdownView } from "obsidian";
 import { File } from "./file";
 import HierarchicalBacklinksPlugin from "./main";
 import { TreeNode } from "./treeNode";
@@ -31,6 +31,7 @@ export class HierarchicalBacklinksView extends ItemView {
     private isSortRestore: boolean = false;
     private sortSnapshot?: Map<string, { isCollapsed: boolean; isVisible: boolean }>;
     private searchSeq: number = 0;
+    private debugHooksInstalled: boolean = false;
     constructor(leaf: WorkspaceLeaf, plugin: HierarchicalBacklinksPlugin) {
         super(leaf);
         this.plugin = plugin;
@@ -66,13 +67,75 @@ export class HierarchicalBacklinksView extends ItemView {
         this.initialize?.();
     }
 
+    public applyGlobalsFromUiState() {
+        // keep navbar in sync
+        this.syncNavbarFromGlobals?.();
+
+        if (this.isNoteLocked()) return; // frozen tree: UI only
+
+        // 1) list/content in place
+        this.applyListAndContentGlobalsInPlace?.();
+
+        // 2) flatten (rebuild tree) if needed
+        const wantFlatten = !!uiState.flattenCollapsed;
+        if (wantFlatten !== this.isFlattened) {
+            this.layout?.setFlattenActive(wantFlatten);
+            this.toggleFlatten(wantFlatten);
+        }
+
+        // 3) sort on current tree
+        this.layout?.setSortActive(!!uiState.sortCollapsed);
+        this.updateSortOrder(!!uiState.sortCollapsed);
+
+        // 4) reapply search if active
+        if ((uiState.query ?? "").length > 0) {
+            this.filterBacklinks(uiState.query);
+        }
+    }
+
     public focusSearch() {
         this.layout?.focusSearch?.();
     }
 
     async initialize() {
         Logger.debug(ENABLE_LOG_SORT, "[initialize] start");
+        const ae0 = document.activeElement as HTMLElement | null;
+        const editorHadFocus0 = !!ae0?.closest?.('.cm-editor');
+        console.log('[HB] initialize(): start; activeElement =', ae0?.tagName, ae0?.className, '| editorHadFocus =', editorHadFocus0);
         const container = this.containerEl.children[1] as HTMLElement; // .view-content
+
+        // Remember the editor leaf; we’ll restore it after remount if needed
+        const editorView = this.app.workspace.getActiveViewOfType(MarkdownView) || null;
+        const editorLeaf = editorView?.leaf || null;
+
+        // Install debug listeners ONCE per view instance for focus/mouse diagnostics
+        if (!this.debugHooksInstalled) {
+            // Log focus transitions inside the HB view
+            this.containerEl.addEventListener('focusin', (e) => {
+                const t = e.target as HTMLElement | null;
+                console.log('[HB] focusin in HB view — target =', t?.tagName, t?.className);
+            });
+            this.containerEl.addEventListener('focusout', (e) => {
+                const t = e.target as HTMLElement | null;
+                console.log('[HB] focusout in HB view — target =', t?.tagName, t?.className);
+            });
+
+            // Mouse path diagnostics (capture phase) to see what bubbles up
+            this.containerEl.addEventListener('pointerdown', (e) => {
+                const t = e.target as HTMLElement | null;
+                console.log('[HB] pointerdown in HB view (capture) — target =', t?.tagName, t?.className);
+            }, true);
+            this.containerEl.addEventListener('mousedown', (e) => {
+                const t = e.target as HTMLElement | null;
+                console.log('[HB] mousedown in HB view (capture) — target =', t?.tagName, t?.className);
+            }, true);
+            this.containerEl.addEventListener('click', (e) => {
+                const t = e.target as HTMLElement | null;
+                console.log('[HB] click in HB view (capture) — target =', t?.tagName, t?.className);
+            }, true);
+
+            this.debugHooksInstalled = true;
+        }
 
         const activeFile = this.app.workspace.getActiveFile();
         if (!activeFile) return;
@@ -84,46 +147,339 @@ export class HierarchicalBacklinksView extends ItemView {
         // Prefer a locked snapshot from main (snapshot presence = locked)
         const snap = this.plugin.locks.get(noteId);
         if (snap) {
+            console.log('[HB] initialize(): using LOCKED snapshot (no globals applied)');
             this.viewState = snap.viewState;
             this.viewState.isLocked = true;
             this.originalHierarchy = snap.hierarchy;
-
-            // 🔒 Locked: mount the snapshot as-is; do NOT apply globals to tree
-            this.createPane(container, this.originalHierarchy);
-
+        
+            // Mount header once (or reuse) and render tree only
+            if (!this.layout) {
+                this.layout = new BacklinksLayout(this.app);
+                this.layout.mountHeader(container as HTMLDivElement, {
+                    createTreeNodeView: (containerEl, node) => {
+                        const v = new TreeNodeView(this.app, containerEl, node, this.viewState!);
+                        this.treeNodeViews.push(v);
+                        return v;
+                    },
+                    onListToggle: (collapsed) => {
+                        if (this.isNoteLocked()) return;
+                        if (collapsed) this.treeNodeViews.forEach((n) => n.listToggleOn());
+                        else this.treeNodeViews.forEach((n) => n.listToggleOff());
+                        this.layout?.setListActive(collapsed);
+                    },
+                    onContentToggle: (collapsed) => {
+                        if (this.isNoteLocked()) return;
+                        if (collapsed) this.treeNodeViews.forEach((n) => n.contentHiddenToggleOn());
+                        else this.treeNodeViews.forEach((n) => n.contentHiddenToggleOff());
+                        this.layout?.setContentActive(collapsed);
+                    },
+                    onSearchChange: (q) => {
+                        if (this.isNoteLocked()) return;
+                        if ((uiState.query ?? "") === (q ?? "")) return;
+                        this.filterBacklinks(q);
+                    },
+                    onSortToggle: (descending: boolean) => {
+                        if (this.isNoteLocked()) return;
+                        this.layout?.setSortActive(descending);
+                        this.updateSortOrder(descending);
+                        if ((uiState.query ?? "").length > 0) this.filterBacklinks(uiState.query);
+                    },
+                    onFlattenToggle: (flattened: boolean) => {
+                        if (this.isNoteLocked()) return;
+                        this.layout?.setFlattenActive(flattened);
+                        this.toggleFlatten(flattened);
+                        if ((uiState.query ?? "").length > 0) this.filterBacklinks(uiState.query);
+                    },
+                    onLockToggle: (locked: boolean) => {
+                        if (!this.currentNoteId || !this.viewState) return;
+                        if (locked) {
+                            const s = this.captureSnapshot();
+                            this.plugin.locks.set(this.currentNoteId, s);
+                            this.layout?.setLockActive(true);
+                        } else {
+                            this.plugin.locks.delete(this.currentNoteId);
+                            this.layout?.setLockActive(false);
+                            this.applyListAndContentGlobalsInPlace();
+                            const wantFlatten = !!uiState.flattenCollapsed;
+                            if (wantFlatten !== this.isFlattened) {
+                                this.layout?.setFlattenActive(wantFlatten);
+                                this.toggleFlatten(wantFlatten);
+                                if ((uiState.query ?? '').length > 0) this.filterBacklinks(uiState.query);
+                            } else {
+                                this.layout?.setSortActive(!!uiState.sortCollapsed);
+                                this.updateSortOrder(!!uiState.sortCollapsed);
+                                if ((uiState.query ?? '').length > 0) this.filterBacklinks(uiState.query);
+                            }
+                        }
+                    },
+                    initialLocked: true,
+                    initialFlattened: this.isFlattened,
+                }, /* initialLocked */ true);
+            } else {
+                // Reuse header; just ensure callbacks and visuals match locked state
+                this.layout.setCallbacks({
+                    createTreeNodeView: (containerEl, node) => {
+                        const v = new TreeNodeView(this.app, containerEl, node, this.viewState!);
+                        this.treeNodeViews.push(v);
+                        return v;
+                    },
+                    onListToggle: (collapsed) => {
+                        if (this.isNoteLocked()) return;
+                        if (collapsed) this.treeNodeViews.forEach((n) => n.listToggleOn());
+                        else this.treeNodeViews.forEach((n) => n.listToggleOff());
+                        this.layout?.setListActive(collapsed);
+                    },
+                    onContentToggle: (collapsed) => {
+                        if (this.isNoteLocked()) return;
+                        if (collapsed) this.treeNodeViews.forEach((n) => n.contentHiddenToggleOn());
+                        else this.treeNodeViews.forEach((n) => n.contentHiddenToggleOff());
+                        this.layout?.setContentActive(collapsed);
+                    },
+                    onSearchChange: (q) => {
+                        if (this.isNoteLocked()) return;
+                        if ((uiState.query ?? "") === (q ?? "")) return;
+                        this.filterBacklinks(q);
+                    },
+                    onSortToggle: (descending: boolean) => {
+                        if (this.isNoteLocked()) return;
+                        this.layout?.setSortActive(descending);
+                        this.updateSortOrder(descending);
+                        if ((uiState.query ?? "").length > 0) this.filterBacklinks(uiState.query);
+                    },
+                    onFlattenToggle: (flattened: boolean) => {
+                        if (this.isNoteLocked()) return;
+                        this.layout?.setFlattenActive(flattened);
+                        this.toggleFlatten(flattened);
+                        if ((uiState.query ?? "").length > 0) this.filterBacklinks(uiState.query);
+                    },
+                    onLockToggle: (locked: boolean) => {
+                        if (!this.currentNoteId || !this.viewState) return;
+                        if (locked) {
+                            const s = this.captureSnapshot();
+                            this.plugin.locks.set(this.currentNoteId, s);
+                            this.layout?.setLockActive(true);
+                        } else {
+                            this.plugin.locks.delete(this.currentNoteId);
+                            this.layout?.setLockActive(false);
+                            this.applyListAndContentGlobalsInPlace();
+                            const wantFlatten = !!uiState.flattenCollapsed;
+                            if (wantFlatten !== this.isFlattened) {
+                                this.layout?.setFlattenActive(wantFlatten);
+                                this.toggleFlatten(wantFlatten);
+                                if ((uiState.query ?? '').length > 0) this.filterBacklinks(uiState.query);
+                            } else {
+                                this.layout?.setSortActive(!!uiState.sortCollapsed);
+                                this.updateSortOrder(!!uiState.sortCollapsed);
+                                if ((uiState.query ?? '').length > 0) this.filterBacklinks(uiState.query);
+                            }
+                        }
+                    },
+                    initialLocked: true,
+                    initialFlattened: this.isFlattened,
+                });
+                this.layout.setLockActive(true);
+            }
+            // Render the snapshot tree only; header stays
+            this.treeNodeViews = [];
+            this.treeNodeViews = this.layout.renderTree(this.originalHierarchy);
+        
         } else {
-            // Unlocked: compute fresh hierarchy
-            this.viewState = {
-                nodeStates: new Map<string, NodeViewState>(),
-                isLocked: false,
-            };
+            console.log('[HB] initialize(): UNLOCKED — globals => sortDescending =', this.sortDescending, ', isFlattened =', this.isFlattened);
+        
+            this.viewState = { nodeStates: new Map<string, NodeViewState>(), isLocked: false };
+        
             const file = new File(this.app, activeFile);
             const hierarchy = await file.getBacklinksHierarchy();
             this.originalHierarchy = hierarchy;
-
-            // ✅ Only in UNLOCKED mode: sync globals and apply them
+        
             this.sortDescending = uiState.sortCollapsed ?? false;
             this.isFlattened = uiState.flattenCollapsed ?? false;
-
-            if (this.isFlattened) {
-                this.flattenedHierarchy = this.buildFlattenedHierarchy(this.originalHierarchy);
-                this.createPane(container, this.flattenedHierarchy);
+        
+            // Ensure header exists
+            if (!this.layout) {
+                this.layout = new BacklinksLayout(this.app);
+                this.layout.mountHeader(container as HTMLDivElement, {
+                    createTreeNodeView: (containerEl, node) => {
+                        const v = new TreeNodeView(this.app, containerEl, node, this.viewState!);
+                        this.treeNodeViews.push(v);
+                        return v;
+                    },
+                    onListToggle: (collapsed) => {
+                        if (this.isNoteLocked()) return;
+                        if (collapsed) this.treeNodeViews.forEach((n) => n.listToggleOn());
+                        else this.treeNodeViews.forEach((n) => n.listToggleOff());
+                        this.layout?.setListActive(collapsed);
+                    },
+                    onContentToggle: (collapsed) => {
+                        if (this.isNoteLocked()) return;
+                        if (collapsed) this.treeNodeViews.forEach((n) => n.contentHiddenToggleOn());
+                        else this.treeNodeViews.forEach((n) => n.contentHiddenToggleOff());
+                        this.layout?.setContentActive(collapsed);
+                    },
+                    onSearchChange: (q) => {
+                        if (this.isNoteLocked()) return;
+                        if ((uiState.query ?? "") === (q ?? "")) return;
+                        this.filterBacklinks(q);
+                    },
+                    onSortToggle: (descending: boolean) => {
+                        if (this.isNoteLocked()) return;
+                        this.layout?.setSortActive(descending);
+                        this.updateSortOrder(descending);
+                        if ((uiState.query ?? "").length > 0) this.filterBacklinks(uiState.query);
+                    },
+                    onFlattenToggle: (flattened: boolean) => {
+                        if (this.isNoteLocked()) return;
+                        this.layout?.setFlattenActive(flattened);
+                        this.toggleFlatten(flattened);
+                        if ((uiState.query ?? "").length > 0) this.filterBacklinks(uiState.query);
+                    },
+                    onLockToggle: (locked: boolean) => {
+                        if (!this.currentNoteId || !this.viewState) return;
+                        if (locked) {
+                            const s = this.captureSnapshot();
+                            this.plugin.locks.set(this.currentNoteId, s);
+                            this.layout?.setLockActive(true);
+                        } else {
+                            this.plugin.locks.delete(this.currentNoteId);
+                            this.layout?.setLockActive(false);
+                            this.applyListAndContentGlobalsInPlace();
+                            const wantFlatten = !!uiState.flattenCollapsed;
+                            if (wantFlatten !== this.isFlattened) {
+                                this.layout?.setFlattenActive(wantFlatten);
+                                this.toggleFlatten(wantFlatten);
+                                if ((uiState.query ?? '').length > 0) this.filterBacklinks(uiState.query);
+                            } else {
+                                this.layout?.setSortActive(!!uiState.sortCollapsed);
+                                this.updateSortOrder(!!uiState.sortCollapsed);
+                                if ((uiState.query ?? '').length > 0) this.filterBacklinks(uiState.query);
+                            }
+                        }
+                    },
+                    initialLocked: false,
+                    initialFlattened: this.isFlattened,
+                }, /* initialLocked */ false);
             } else {
-                this.createPane(container, this.originalHierarchy);
+                this.layout.setCallbacks({
+                    createTreeNodeView: (containerEl, node) => {
+                        const v = new TreeNodeView(this.app, containerEl, node, this.viewState!);
+                        this.treeNodeViews.push(v);
+                        return v;
+                    },
+                    onListToggle: (collapsed) => {
+                        if (this.isNoteLocked()) return;
+                        if (collapsed) this.treeNodeViews.forEach((n) => n.listToggleOn());
+                        else this.treeNodeViews.forEach((n) => n.listToggleOff());
+                        this.layout?.setListActive(collapsed);
+                    },
+                    onContentToggle: (collapsed) => {
+                        if (this.isNoteLocked()) return;
+                        if (collapsed) this.treeNodeViews.forEach((n) => n.contentHiddenToggleOn());
+                        else this.treeNodeViews.forEach((n) => n.contentHiddenToggleOff());
+                        this.layout?.setContentActive(collapsed);
+                    },
+                    onSearchChange: (q) => {
+                        if (this.isNoteLocked()) return;
+                        if ((uiState.query ?? "") === (q ?? "")) return;
+                        this.filterBacklinks(q);
+                    },
+                    onSortToggle: (descending: boolean) => {
+                        if (this.isNoteLocked()) return;
+                        this.layout?.setSortActive(descending);
+                        this.updateSortOrder(descending);
+                        if ((uiState.query ?? "").length > 0) this.filterBacklinks(uiState.query);
+                    },
+                    onFlattenToggle: (flattened: boolean) => {
+                        if (this.isNoteLocked()) return;
+                        this.layout?.setFlattenActive(flattened);
+                        this.toggleFlatten(flattened);
+                        if ((uiState.query ?? "").length > 0) this.filterBacklinks(uiState.query);
+                    },
+                    onLockToggle: (locked: boolean) => {
+                        if (!this.currentNoteId || !this.viewState) return;
+                        if (locked) {
+                            const s = this.captureSnapshot();
+                            this.plugin.locks.set(this.currentNoteId, s);
+                            this.layout?.setLockActive(true);
+                        } else {
+                            this.plugin.locks.delete(this.currentNoteId);
+                            this.layout?.setLockActive(false);
+                            this.applyListAndContentGlobalsInPlace();
+                            const wantFlatten = !!uiState.flattenCollapsed;
+                            if (wantFlatten !== this.isFlattened) {
+                                this.layout?.setFlattenActive(wantFlatten);
+                                this.toggleFlatten(wantFlatten);
+                                if ((uiState.query ?? '').length > 0) this.filterBacklinks(uiState.query);
+                            } else {
+                                this.layout?.setSortActive(!!uiState.sortCollapsed);
+                                this.updateSortOrder(!!uiState.sortCollapsed);
+                                if ((uiState.query ?? '').length > 0) this.filterBacklinks(uiState.query);
+                            }
+                        }
+                    },
+                    initialLocked: false,
+                    initialFlattened: this.isFlattened,
+                });
+                this.layout.setLockActive(false);
             }
+        
+            // Render tree based on flatten state
+            this.treeNodeViews = [];
+            const toRender = this.isFlattened
+                ? (this.flattenedHierarchy = this.buildFlattenedHierarchy(this.originalHierarchy))
+                : this.originalHierarchy;
+            this.treeNodeViews = this.layout.renderTree(toRender);
             this.updateSortOrder(this.sortDescending);
         }
+
+        // ⌨️ After remount: if search is not open, ensure the editor leaf stays active & focused.
+        // This keeps Cmd/Alt+←/→ working even after clicking navbar buttons.
+        try {
+            const ae = document.activeElement as HTMLElement | null;
+            const searchOpen = this.layout?.isSearchVisible?.() ?? false;
+
+            // If focus is on <body> or somewhere inside the HB pane (esp. header), hand it back to the editor
+            const inHB = !!ae?.closest?.(".workspace-leaf-content[data-type='hierarchical-backlinks']");
+            const lostFocus = !ae || ae.tagName === "BODY" || inHB;
+
+            if (!searchOpen && editorLeaf && lostFocus) {
+                // 1) Make sure the editor is the active leaf again (prevents workspace hotkeys from targeting HB)
+                this.app.workspace.setActiveLeaf(editorLeaf, false, false);
+                // 2) Ensure DOM focus is on CodeMirror
+                const edView = this.app.workspace.getActiveViewOfType(MarkdownView);
+                edView?.editor?.focus();
+            }
+
+            // Debug
+            const editorHasFocus = !!(document.activeElement as HTMLElement | null)?.closest?.(".cm-editor");
+            console.log(
+                "[HB] initialize() done — activeElement =",
+                (document.activeElement as HTMLElement | null)?.tagName,
+                (document.activeElement as HTMLElement | null)?.className,
+                "| editorHasFocus =",
+                editorHasFocus
+            );
+        } catch (_) { }
+
+        // view.ts — at the very end of initialize(), after createPane/updateSortOrder, etc.
+        try {
+            const ae = document.activeElement as HTMLElement | null;
+            const editorHasFocus = !!ae?.closest?.('.cm-editor');
+            console.log('[HB] initialize() done — activeElement =', ae?.tagName, ae?.className, '| editorHasFocus =', editorHasFocus);
+        } catch (_) { }
+
+        // Keep navbar in sync without remounting header
+        this.syncNavbarFromGlobals();
     }
 
     register_events() {
         this.plugin.registerEvent(this.app.metadataCache.on("changed", () => {
             this.initialize();
         }));
-
+/*
         this.plugin.registerEvent(this.app.workspace.on("layout-change", () => {
             this.initialize();
         }));
-
+*/
         this.plugin.registerEvent(this.app.workspace.on("file-open", () => {
             this.initialize();
         }));
@@ -136,118 +492,28 @@ export class HierarchicalBacklinksView extends ItemView {
     }
 
     createPane(container: Element, hierarchy: TreeNode[]) {
-        Logger.debug(ENABLE_LOG_SORT, `[createPane] rendering with ${hierarchy.length} root nodes`);
-        Logger.debug(ENABLE_LOG_SORT, "[createPane] START: resetting collected views");
-        // Delegate all layout/DOM work to BacklinksLayout
-        this.layout = new BacklinksLayout(this.app);
-
-        // Reset views before rendering
+        // Use renderTree only; header is managed by initialize/mountHeader
         this.treeNodeViews = [];
-        Logger.debug(ENABLE_LOG_SORT, "[createPane] treeNodeViews reset -> count:", this.treeNodeViews.length);
-
-        Logger.debug(ENABLE_LOG_SORT, "[createPane] calling layout.mount; current collected views:", this.treeNodeViews.length);
-        this.layout.mount(container as HTMLDivElement, hierarchy, {
-            createTreeNodeView: (containerEl, node) => {
-                const v = new TreeNodeView(
-                    this.app,
-                    containerEl,
-                    node,
-                    this.viewState!
-                );
-                // Collects nodes and appends their children to them
-                this.treeNodeViews.push(v);
-                Logger.debug(ENABLE_LOG_SORT, "[createPane] created TreeNodeView for:", node.path);
-                return v;
-            },
-            onListToggle: (collapsed) => {
-                if (this.isNoteLocked()) return;
-                if (collapsed) {
-                    this.treeNodeViews.forEach((n) => n.listToggleOn());
-                } else {
-                    this.treeNodeViews.forEach((n) => n.listToggleOff());
-                }
-            },
-            onContentToggle: (collapsed) => {
-                if (this.isNoteLocked()) return;
-                if (collapsed) {
-                    this.treeNodeViews.forEach((n) => n.contentHiddenToggleOn());
-                } else {
-                    this.treeNodeViews.forEach((n) => n.contentHiddenToggleOff());
-                }
-            },
-            onSearchChange: (q) => {
-                if (this.isNoteLocked()) return;
-                this.filterBacklinks(q);
-            },
-            onSortToggle: (descending: boolean) => {
-                if (this.isNoteLocked()) return;
-                Logger.debug(ENABLE_LOG_SORT, `[createPane:onSortToggle] Triggered with descending=${descending}`);
-                this.updateSortOrder(descending);
-            },
-            onFlattenToggle: (flattened: boolean) => {
-                if (this.isNoteLocked()) return;   // locked → ignore
-                this.toggleFlatten(flattened);
-            },
-            onLockToggle: (locked: boolean) => {
-                if (!this.currentNoteId || !this.viewState) return;
-                // this.viewState.isLocked = locked;
-                if (locked) {
-                    const snap = this.captureSnapshot();
-                    this.plugin.locks.set(this.currentNoteId, snap);
-                } else {
-                    this.plugin.locks.delete(this.currentNoteId);
-
-                    // >>> Minimal resync to globals on unlock <<<
-                    this.isFlattened = !!uiState.flattenCollapsed;
-                    this.sortDescending = !!uiState.sortCollapsed;
-                }
-                this.initialize();
-            },
-            initialLocked: !!this.plugin.locks.get(this.currentNoteId ?? ""),
-            initialFlattened: this.isFlattened,
-        });
-        Logger.debug(ENABLE_LOG_SORT, "[createPane] layout.mount finished; collected views:", this.treeNodeViews.length);
-        Logger.debug(ENABLE_LOG_SORT, "[createPane] collected node paths:", this.treeNodeViews.map(v => v.TreeNode.path));
-
-        // === SORT RESTORE (special path) ============================================
+        this.treeNodeViews = this.layout!.renderTree(hierarchy);
+    
+        // If we’re in the special sort-restore path
         if (this.isSortRestore && this.sortSnapshot) {
-            Logger.debug(ENABLE_LOG_SORT, "[createPane] SORT RESTORE: applying snapshot");
-
-            // 1) Overwrite viewState with the snapshot we took before sorting
             this.restoreNodeStatesFrom(this.sortSnapshot);
-
-            // 2) Apply restored states to all rendered views (deep preferred)
-            for (const v of this.treeNodeViews) {
-                v.applyNodeViewStateToUI();
-            }
-            // 3) Clear snapshot/flag and EXIT EARLY so nothing else runs this cycle
+            for (const v of this.treeNodeViews) v.applyNodeViewStateToUI();
             this.isSortRestore = false;
             this.sortSnapshot = undefined;
-            Logger.debug(ENABLE_LOG_SORT, "[createPane] SORT RESTORE: done");
-            return; // ← important: skip global toggles/etc. for this special pass
+            return;
         }
-        // ============================================================================
-
-        // 1. Apply global list/content states only when UNLOCKED
+    
+        // Apply global list/content only when unlocked
         if (!this.isNoteLocked()) {
-            if (uiState.listCollapsed) {
-                this.treeNodeViews.forEach(v => v.listToggleOn());
-            } else {
-                this.treeNodeViews.forEach(v => v.listToggleOff());
-            }
-            if (uiState.contentCollapsed) {
-                this.treeNodeViews.forEach(v => v.contentHiddenToggleOn());
-            } else {
-                this.treeNodeViews.forEach(v => v.contentHiddenToggleOff());
-            }
+            if (uiState.listCollapsed) this.treeNodeViews.forEach(v => v.listToggleOn());
+            else this.treeNodeViews.forEach(v => v.listToggleOff());
+            if (uiState.contentCollapsed) this.treeNodeViews.forEach(v => v.contentHiddenToggleOn());
+            else this.treeNodeViews.forEach(v => v.contentHiddenToggleOff());
         }
-
-        // 2. Then update UI
-        for (const v of this.treeNodeViews) {
-            v.applyNodeViewStateToUI();
-        }
-        Logger.debug(ENABLE_LOG_SORT, "[createPane] re-applied collapsed/visibility states to", this.treeNodeViews.length, "nodes");
-        Logger.debug(ENABLE_LOG_SORT, "[createPane] DONE with createPane");
+    
+        for (const v of this.treeNodeViews) v.applyNodeViewStateToUI();
     }
 
     private snapshotNodeStates(): Map<string, { isCollapsed: boolean; isVisible: boolean }> {
@@ -296,6 +562,7 @@ export class HierarchicalBacklinksView extends ItemView {
         // We rebuild the DOM from a sorted data source and rely on createPane()
         // to reapply per-node states (isCollapsed/isVisible) via viewState.
         const container = this.containerEl.children[1] as HTMLElement; // .view-content
+
 
         if (this.isFlattened) {
             // Rebuild flattened list, sort (shallow), and remount
@@ -519,6 +786,40 @@ export class HierarchicalBacklinksView extends ItemView {
 
     private isNoteLocked(): boolean {
         return !!(this.currentNoteId && this.plugin.locks.get(this.currentNoteId));
+    }
+
+    /** Update the navbar buttons from current globals (and lock state) without remounting. */
+    private syncNavbarFromGlobals() {
+        if (!this.layout) return;
+        const locked = this.isNoteLocked();
+        this.layout.setLockActive(locked);
+        // reflect global toggles only when unlocked (purely visual; the lock setter already handles badge/dimming)
+        this.layout.setListActive(!!uiState.listCollapsed);
+        this.layout.setContentActive(!!uiState.contentCollapsed);
+        this.layout.setFlattenActive(!!uiState.flattenCollapsed);
+        this.layout.setSortActive(!!uiState.sortCollapsed);
+    }
+
+    /** Apply current *global* list/content to the existing tree in-place (no header rebuild). 
+     *  For flatten/sort we’ll call the dedicated methods (which rebuild the tree only). */
+    private applyListAndContentGlobalsInPlace() {
+        if (this.isNoteLocked()) return; // don't touch locked trees
+        if (!this.treeNodeViews?.length) return;
+
+        if (uiState.listCollapsed) {
+            this.treeNodeViews.forEach(v => v.listToggleOn());
+        } else {
+            this.treeNodeViews.forEach(v => v.listToggleOff());
+        }
+
+        if (uiState.contentCollapsed) {
+            this.treeNodeViews.forEach(v => v.contentHiddenToggleOn());
+        } else {
+            this.treeNodeViews.forEach(v => v.contentHiddenToggleOff());
+        }
+
+        // Push states to DOM
+        for (const v of this.treeNodeViews) v.applyNodeViewStateToUI();
     }
 
 }

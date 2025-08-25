@@ -2,40 +2,54 @@ import { App, setIcon } from "obsidian";
 import { EventEmitter } from "events";
 //import { collapseLeafMatchBlocks } from "utils/collapseUtils";
 
-export class CollapseButton extends EventEmitter  {
-  private app: App;
-  private parent: Element;
-  private button: HTMLDivElement;
-  private icon: string;
-  constructor(app: App, parent: Element, icon: string) {
-      super();
-      this.app=app;
-      this.parent=parent;
-      this.icon=icon;
-  }
+export class CollapseButton extends EventEmitter {
+    private app: App;
+    private parent: Element;
+    private button: HTMLDivElement;
+    private icon: string;
+    constructor(app: App, parent: Element, icon: string) {
+        super();
+        this.app = app;
+        this.parent = parent;
+        this.icon = icon;
+    }
 
-  render(){
-      this.button=this.parent.createDiv({cls: "clickable-icon nav-action-button"});
-      setIcon( this.button, this.icon);
+    render() {
+        this.button = this.parent.createDiv({ cls: "clickable-icon nav-action-button" });
+        setIcon(this.button, this.icon);
 
-      this.button.addEventListener("click", (e)=>{ 
-          this.button.classList.toggle('is-active');
-          this.emit("collapse-click", e);
-      });
-  }
+        // Prevent navbar buttons from stealing editor focus
+        this.button.addEventListener("mousedown", (e) => {
+            console.log("[CollapseButton] mousedown prevented for", this.icon);
+            e.preventDefault();
+        });
 
-  isCollapsed(): boolean{
-      return this.button.hasClass("is-active"); 
-  }
+        // collapseButtons.ts — inside render(), in the click listener:
+        this.button.addEventListener("click", (e) => {
+            console.log("[CollapseButton] click:", this.icon, "active before =", document.activeElement?.tagName, document.activeElement?.className);
+            console.log("[CollapseButton] click path =", e.composedPath().map((el:any)=>el?.className || el?.tagName));
+            this.button.classList.toggle('is-active');
+            this.emit("collapse-click", e);
+            // after the view handles it (often async), check again on next tick
+            setTimeout(() => {
+                const ae = document.activeElement as HTMLElement | null;
+                console.log("[CollapseButton] after toggle:", this.icon, "active =", ae?.tagName, ae?.className);
+            }, 0);
+        });
+    }
 
-  setCollapsed(collapsed: boolean) {
-      if (collapsed) {
-          this.button.addClass("is-active");
-      } else {
-          this.button.removeClass("is-active");
-      }
-  }
-  public getElement(): HTMLDivElement {
-      return this.button;
-  }
+    isCollapsed(): boolean {
+        return this.button.hasClass("is-active");
+    }
+
+    setCollapsed(collapsed: boolean) {
+        if (collapsed) {
+            this.button.addClass("is-active");
+        } else {
+            this.button.removeClass("is-active");
+        }
+    }
+    public getElement(): HTMLDivElement {
+        return this.button;
+    }
 }

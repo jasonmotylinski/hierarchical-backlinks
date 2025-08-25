@@ -10,6 +10,12 @@ export default class HierarchicalBacklinksPlugin extends Plugin {
     public locks!: LockService;
 
     async onload() {
+
+        document.addEventListener("focusin", () => {
+            const ae = document.activeElement as HTMLElement | null;
+            console.log("[DEBUG] focusin: activeElement =", ae?.tagName, ae?.className);
+        });
+
         const data = (await this.loadData()) ?? {};
 
         this.locks = new LockService(this.app);
@@ -151,6 +157,6 @@ export default class HierarchicalBacklinksPlugin extends Plugin {
     }
 
     private refreshActiveView() {
-        this.withActiveView((v) => v.initialize?.(), { respectLock: false });
-    }
+        this.withActiveView((v) => v.applyGlobalsFromUiState?.(), { respectLock: false });
+      }
 }
