@@ -48,6 +48,28 @@ export class HierarchicalBacklinksView extends ItemView {
         return "Hierarchical backlinks";
     }
 
+    /** Command-friendly lock toggle for the current note. */
+    public toggleLock() {
+        if (!this.currentNoteId) return;
+
+        const isLocked = !!this.plugin.locks.get(this.currentNoteId);
+        if (isLocked) {
+            // Unlock: drop snapshot
+            this.plugin.locks.delete(this.currentNoteId);
+        } else {
+            // Lock: capture snapshot
+            const snap = this.captureSnapshot?.();
+            if (snap) this.plugin.locks.set(this.currentNoteId, snap);
+        }
+
+        // Remount so header + tree reflect new state
+        this.initialize?.();
+    }
+
+    public focusSearch() {
+        this.layout?.focusSearch?.();
+    }
+
     async initialize() {
         Logger.debug(ENABLE_LOG_SORT, "[initialize] start");
         const container = this.containerEl.children[1] as HTMLElement; // .view-content
@@ -65,7 +87,12 @@ export class HierarchicalBacklinksView extends ItemView {
             this.viewState = snap.viewState;
             this.viewState.isLocked = true;
             this.originalHierarchy = snap.hierarchy;
+
+            // 🔒 Locked: mount the snapshot as-is; do NOT apply globals to tree
+            this.createPane(container, this.originalHierarchy);
+
         } else {
+            // Unlocked: compute fresh hierarchy
             this.viewState = {
                 nodeStates: new Map<string, NodeViewState>(),
                 isLocked: false,
@@ -73,18 +100,19 @@ export class HierarchicalBacklinksView extends ItemView {
             const file = new File(this.app, activeFile);
             const hierarchy = await file.getBacklinksHierarchy();
             this.originalHierarchy = hierarchy;
-        }
-        this.sortDescending = uiState.sortCollapsed ?? false;
 
+            // ✅ Only in UNLOCKED mode: sync globals and apply them
+            this.sortDescending = uiState.sortCollapsed ?? false;
+            this.isFlattened = uiState.flattenCollapsed ?? false;
 
-        // Recompute flattened view if needed
-        if (this.isFlattened) {
-            this.flattenedHierarchy = this.buildFlattenedHierarchy(this.originalHierarchy);
-            this.createPane(container, this.flattenedHierarchy);
-        } else {
-            this.createPane(container, this.originalHierarchy);
+            if (this.isFlattened) {
+                this.flattenedHierarchy = this.buildFlattenedHierarchy(this.originalHierarchy);
+                this.createPane(container, this.flattenedHierarchy);
+            } else {
+                this.createPane(container, this.originalHierarchy);
+            }
+            this.updateSortOrder(this.sortDescending);
         }
-        this.updateSortOrder(this.sortDescending);
     }
 
     register_events() {
@@ -132,7 +160,7 @@ export class HierarchicalBacklinksView extends ItemView {
                 return v;
             },
             onListToggle: (collapsed) => {
-                if (this.viewState?.isLocked) return;
+                if (this.isNoteLocked()) return;
                 if (collapsed) {
                     this.treeNodeViews.forEach((n) => n.listToggleOn());
                 } else {
@@ -140,7 +168,7 @@ export class HierarchicalBacklinksView extends ItemView {
                 }
             },
             onContentToggle: (collapsed) => {
-                if (this.viewState?.isLocked) return;
+                if (this.isNoteLocked()) return;
                 if (collapsed) {
                     this.treeNodeViews.forEach((n) => n.contentHiddenToggleOn());
                 } else {
@@ -148,16 +176,16 @@ export class HierarchicalBacklinksView extends ItemView {
                 }
             },
             onSearchChange: (q) => {
-                if (this.viewState?.isLocked) return;
+                if (this.isNoteLocked()) return;
                 this.filterBacklinks(q);
             },
             onSortToggle: (descending: boolean) => {
-                if (this.viewState?.isLocked) return;
+                if (this.isNoteLocked()) return;
                 Logger.debug(ENABLE_LOG_SORT, `[createPane:onSortToggle] Triggered with descending=${descending}`);
                 this.updateSortOrder(descending);
             },
             onFlattenToggle: (flattened: boolean) => {
-                if (this.viewState?.isLocked) return;
+                if (this.isNoteLocked()) return;   // locked → ignore
                 this.toggleFlatten(flattened);
             },
             onLockToggle: (locked: boolean) => {
@@ -175,8 +203,7 @@ export class HierarchicalBacklinksView extends ItemView {
                 }
                 this.initialize();
             },
-            initialLocked: this.viewState?.isLocked ?? false,
-            // initialLocked: !!this.plugin.lockedTrees.get(this.currentNoteId ?? ""),
+            initialLocked: !!this.plugin.locks.get(this.currentNoteId ?? ""),
             initialFlattened: this.isFlattened,
         });
         Logger.debug(ENABLE_LOG_SORT, "[createPane] layout.mount finished; collected views:", this.treeNodeViews.length);
@@ -202,7 +229,7 @@ export class HierarchicalBacklinksView extends ItemView {
         // ============================================================================
 
         // 1. Apply global list/content states only when UNLOCKED
-        if (!this.viewState?.isLocked) {
+        if (!this.isNoteLocked()) {
             if (uiState.listCollapsed) {
                 this.treeNodeViews.forEach(v => v.listToggleOn());
             } else {
@@ -458,10 +485,7 @@ export class HierarchicalBacklinksView extends ItemView {
     }
 
     private toggleFlatten(flattened: boolean) {
-        // Preserve state map; only switch the rendered data source
-        if (this.isFlattened === flattened) return;
         this.isFlattened = flattened;
-
         const container = this.containerEl.children[1] as HTMLElement; // .view-content
 
         if (this.isFlattened) {
@@ -491,6 +515,10 @@ export class HierarchicalBacklinksView extends ItemView {
             hierarchy: frozenHierarchy,
             viewState: this.cloneViewState(),
         };
+    }
+
+    private isNoteLocked(): boolean {
+        return !!(this.currentNoteId && this.plugin.locks.get(this.currentNoteId));
     }
 
 }

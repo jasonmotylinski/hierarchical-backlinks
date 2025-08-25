@@ -15,6 +15,9 @@ export class BacklinksLayout {
     private rootContainerEl: HTMLDivElement | null = null;
     private roots: TreeNode[] = [];
     private rootWrappers: Map<string, HTMLElement> = new Map();
+    private callbacks?: BacklinksLayoutHandlers;
+    private nav?: NavButtonsView | null = null;
+    private search?: SearchBar | null = null;
 
     /**
      * Builds the entire backlinks pane UI inside the provided container.
@@ -39,6 +42,8 @@ export class BacklinksLayout {
             headerEl: HTMLDivElement;
         };
     } {
+        this.callbacks = callbacks;
+
         // Prepare the outer .view-content like the original initialize()
         const root = container as HTMLDivElement;
         root.empty();
@@ -51,6 +56,7 @@ export class BacklinksLayout {
         const headerWrapper = root.createDiv();
         const navButtonsView = new NavButtonsView(this.app, headerWrapper);
         navButtonsView.render();
+        this.nav = navButtonsView;
         const headerEl =
             (headerWrapper.querySelector(".nav-header") as HTMLDivElement) ||
             (headerWrapper as HTMLDivElement);
@@ -108,6 +114,7 @@ export class BacklinksLayout {
 
         // Search bar lives inside the header
         const searchBar = new SearchBar(headerEl, "Search...");
+        this.search = searchBar;
         searchBar.setValue(uiState.query ?? "");
 
         const show = uiState.searchCollapsed ?? false;
@@ -194,5 +201,30 @@ export class BacklinksLayout {
             treeNodeViews,
             elements: { root, pane: paneDiv, scrollContainer: scDiv, headerEl },
         };
+    }
+
+    /** Toggle the search bar: show & focus if hidden; hide & clear if visible. */
+    public focusSearch() {
+        const nav = this.nav;
+        const sb = this.search;
+        if (!nav || !sb) return;
+
+        // In this UI, `isCollapsed()` returns whether the control is toggled ON (visible)
+        const isOn = nav.searchCollapseButton.isCollapsed();
+
+        if (!isOn) {
+            // Show the search bar and focus input
+            nav.searchCollapseButton.setCollapsed(true);
+            sb.containerEl.style.display = "";
+            const inp = sb.containerEl.querySelector("input") as HTMLInputElement | null;
+            try { inp?.focus(); } catch (_) {}
+        } else {
+            // Hide the search bar and clear value
+            nav.searchCollapseButton.setCollapsed(false);
+            sb.containerEl.style.display = "none";
+            sb.setValue("");
+            uiState.query = "";
+            this.callbacks?.onSearchChange?.("");
+        }
     }
 }

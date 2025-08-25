@@ -52,6 +52,70 @@ export default class HierarchicalBacklinksPlugin extends Plugin {
             },
             hotkeys: [{ modifiers: ["Mod", "Shift"], key: "L" }],
         });
+        // Toggle Flatten
+        this.addCommand({
+            id: "hb-toggle-flatten",
+            name: "Hierarchical Backlinks: Toggle flatten",
+            callback: () => {
+                uiState.flattenCollapsed = !uiState.flattenCollapsed;
+                this.refreshActiveView();
+            },
+            hotkeys: [{ modifiers: ["Mod", "Shift"], key: "F" }], // example: Cmd/Ctrl+Shift+F
+        });
+
+        // Toggle Sort Order
+        this.addCommand({
+            id: "hb-toggle-sort",
+            name: "Hierarchical Backlinks: Toggle sort order",
+            callback: () => {
+                uiState.sortCollapsed = !uiState.sortCollapsed;
+                this.refreshActiveView();
+            },
+            hotkeys: [{ modifiers: ["Mod", "Shift"], key: "O" }],
+        });
+
+        // Toggle Hide Content
+        this.addCommand({
+            id: "hb-toggle-content",
+            name: "Hierarchical Backlinks: Toggle hide content",
+            callback: () => {
+                uiState.contentCollapsed = !uiState.contentCollapsed;
+                this.refreshActiveView();
+            },
+            hotkeys: [{ modifiers: ["Mod", "Shift"], key: "C" }],
+        });
+
+        // Toggle Collapse List
+        this.addCommand({
+            id: "hb-toggle-list",
+            name: "Hierarchical Backlinks: Toggle collapse list",
+            callback: () => {
+                uiState.listCollapsed = !uiState.listCollapsed;
+                this.refreshActiveView();
+            },
+            hotkeys: [{ modifiers: ["Mod", "Shift"], key: "K" }],
+        });
+
+        // Toggle Lock (works even when currently locked)
+        this.addCommand({
+            id: "hb-toggle-lock",
+            name: "Hierarchical Backlinks: Toggle lock",
+            callback: () => {
+                this.withActiveView((v) => v.toggleLock?.(), { respectLock: false });
+                this.refreshActiveView();
+            },
+            hotkeys: [{ modifiers: ["Mod", "Shift"], key: "." }], // change in Settings → Hotkeys if you like
+        });
+
+        // Focus Search (optional, just focus the search input if available)
+        this.addCommand({
+            id: "hb-focus-search",
+            name: "Hierarchical Backlinks: Focus search",
+            callback: () => {
+                this.withActiveView((view) => view.focusSearch?.(), { respectLock: false });
+            },
+            hotkeys: [{ modifiers: ["Mod", "Shift"], key: "S" }],
+        });
     }
 
     async onUserEnable() {
@@ -78,6 +142,19 @@ export default class HierarchicalBacklinksPlugin extends Plugin {
 
     async saveSettings() {
         await this.saveData(this.settings);
+    }
+
+    private withActiveView(apply: (view: any) => void, opts: { respectLock?: boolean } = {}) {
+        const { respectLock = true } = opts;
+        const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE);
+        if (!leaves.length) return;
+        const v = leaves[0].view as any;
+        if (respectLock && v?.viewState?.isLocked) return; // respect lock by default
+        try { apply(v); } catch (_) { }
+    }
+
+    private refreshActiveView() {
+        this.withActiveView((v) => v.initialize?.(), { respectLock: false });
     }
 }
 
