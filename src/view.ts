@@ -60,7 +60,7 @@ export class HierarchicalBacklinksView extends ItemView {
         this.currentNoteId = noteId;
 
         // Prefer a locked snapshot from main (snapshot presence = locked)
-        const snap = this.plugin.lockedTrees?.get(noteId);
+        const snap = this.plugin.locks.get(noteId);
         if (snap) {
             this.viewState = snap.viewState;
             this.viewState.isLocked = true;
@@ -165,9 +165,9 @@ export class HierarchicalBacklinksView extends ItemView {
                 // this.viewState.isLocked = locked;
                 if (locked) {
                     const snap = this.captureSnapshot();
-                    this.plugin.lockedTrees.set(this.currentNoteId, snap);
+                    this.plugin.locks.set(this.currentNoteId, snap);
                 } else {
-                    this.plugin.lockedTrees.delete(this.currentNoteId);
+                    this.plugin.locks.delete(this.currentNoteId);
 
                     // >>> Minimal resync to globals on unlock <<<
                     this.isFlattened = !!uiState.flattenCollapsed;

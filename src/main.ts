@@ -1,7 +1,8 @@
-import { Plugin, WorkspaceLeaf, PluginSettingTab, Setting, App } from "obsidian";
+import { Plugin, WorkspaceLeaf, PluginSettingTab, Setting, App, Notice } from "obsidian";
 import { HierarchicalBacklinksView, VIEW_TYPE } from "./view";
 import { uiState } from "./ui/uiState";
 import { HierarchicalBacklinksSettings, LockedTreeSnapshot } from "./types";
+import LockService from "./lockService";
 
 const DEFAULT_SETTINGS: HierarchicalBacklinksSettings = {
     toggleLeafNodes: false,
@@ -9,10 +10,12 @@ const DEFAULT_SETTINGS: HierarchicalBacklinksSettings = {
 
 export default class HierarchicalBacklinksPlugin extends Plugin {
     settings: HierarchicalBacklinksSettings;
-    public lockedTrees: Map<string, LockedTreeSnapshot> = new Map();
+    public locks!: LockService;
 
     async onload() {
         const data = (await this.loadData()) ?? {};
+
+        this.locks = new LockService(this.app);
 
         // Load settings (back-compat: old versions stored the settings at root)
         this.settings = Object.assign({}, DEFAULT_SETTINGS, data.settings ?? data);
@@ -39,6 +42,15 @@ export default class HierarchicalBacklinksPlugin extends Plugin {
             callback: () => {
                 this.activateView();
             },
+        });
+        this.addCommand({
+            id: "clear-all-hb-locks",
+            name: "Hierarchical Backlinks: Clear all locks (snapshots)",
+            callback: () => {
+                const n = this.locks.clearAll();                              // ← delegate
+                try { new Notice(`Released ${n} lock${n === 1 ? "" : "s"}.`); } catch (_) { }
+            },
+            hotkeys: [{ modifiers: ["Mod", "Shift"], key: "L" }],
         });
     }
 
