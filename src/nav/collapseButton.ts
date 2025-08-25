@@ -1,7 +1,6 @@
-import { App, setIcon } from "obsidian";
-import { EventEmitter } from "events";
+import { App, setIcon, Events } from "obsidian";
 
-export class CollapseButton extends EventEmitter  {
+export class CollapseButton extends Events  {
     private app: App;
     private parent: Element;
     private button :HTMLDivElement;
@@ -17,7 +16,7 @@ export class CollapseButton extends EventEmitter  {
 
         this.button.addEventListener("click", (e)=>{ 
             this.button.classList.toggle('is-active');
-            this.emit("collapse-click", e);
+            this.trigger("collapse-click", e);
         });
     }
 
