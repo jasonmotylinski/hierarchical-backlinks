@@ -60,8 +60,8 @@ export default class HierarchicalBacklinksPlugin extends Plugin {
             id: "hb-toggle-flatten",
             name: "Hierarchical Backlinks: Toggle flatten",
             callback: () => {
-                uiState.flattenCollapsed = !uiState.flattenCollapsed;
-                this.refreshActiveView();
+                const next = !uiState.flattenCollapsed;
+                this.withActiveView((v) => v.actionFlatten?.(next), { respectLock: false });
             },
             hotkeys: [{ modifiers: ["Mod", "Shift"], key: "F" }], // example: Cmd/Ctrl+Shift+F
         });
@@ -71,8 +71,8 @@ export default class HierarchicalBacklinksPlugin extends Plugin {
             id: "hb-toggle-sort",
             name: "Hierarchical Backlinks: Toggle sort order",
             callback: () => {
-                uiState.sortCollapsed = !uiState.sortCollapsed;
-                this.refreshActiveView();
+                const next = !uiState.sortCollapsed;
+                this.withActiveView((v) => v.actionSort?.(next), { respectLock: false });
             },
             hotkeys: [{ modifiers: ["Mod", "Shift"], key: "O" }],
         });
@@ -82,8 +82,8 @@ export default class HierarchicalBacklinksPlugin extends Plugin {
             id: "hb-toggle-content",
             name: "Hierarchical Backlinks: Toggle hide content",
             callback: () => {
-                uiState.contentCollapsed = !uiState.contentCollapsed;
-                this.refreshActiveView();
+                const next = !uiState.contentCollapsed;
+                this.withActiveView((v) => v.actionContent?.(next), { respectLock: false });
             },
             hotkeys: [{ modifiers: ["Mod", "Shift"], key: "C" }],
         });
@@ -93,8 +93,8 @@ export default class HierarchicalBacklinksPlugin extends Plugin {
             id: "hb-toggle-list",
             name: "Hierarchical Backlinks: Toggle collapse list",
             callback: () => {
-                uiState.listCollapsed = !uiState.listCollapsed;
-                this.refreshActiveView();
+                const next = !uiState.listCollapsed;
+                this.withActiveView((v) => v.actionList?.(next), { respectLock: false });
             },
             hotkeys: [{ modifiers: ["Mod", "Shift"], key: "K" }],
         });
@@ -104,8 +104,11 @@ export default class HierarchicalBacklinksPlugin extends Plugin {
             id: "hb-toggle-lock",
             name: "Hierarchical Backlinks: Toggle lock",
             callback: () => {
-                this.withActiveView((v) => v.toggleLock?.(), { respectLock: false });
-                this.refreshActiveView();
+                this.withActiveView((v) => {
+                    const noteId: string | null = v?.currentNoteId ?? null;
+                    const isLocked = noteId ? this.locks.has(noteId) : false;
+                    v.actionLock?.(!isLocked);
+                }, { respectLock: false });
             },
             hotkeys: [{ modifiers: ["Mod", "Shift"], key: "." }], // change in Settings → Hotkeys if you like
         });
