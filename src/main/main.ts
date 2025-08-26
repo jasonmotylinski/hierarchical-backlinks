@@ -4,6 +4,9 @@ import { HierarchicalBacklinksView, VIEW_TYPE } from "../view/view";
 import { uiState } from "../ui/uiState";
 import { HierarchicalBacklinksSettings } from "../types";
 import LockService from "./lockService";
+import { Logger } from "../utils/logger";
+
+const ENABLE_LOG_MAIN = false;
 
 export default class HierarchicalBacklinksPlugin extends Plugin {
     settings: HierarchicalBacklinksSettings;
@@ -13,7 +16,7 @@ export default class HierarchicalBacklinksPlugin extends Plugin {
 
         document.addEventListener("focusin", () => {
             const ae = document.activeElement as HTMLElement | null;
-            console.log("[DEBUG] focusin: activeElement =", ae?.tagName, ae?.className);
+            Logger.debug(ENABLE_LOG_MAIN,"[DEBUG] focusin: activeElement =", ae?.tagName, ae?.className);
         });
 
         const data = (await this.loadData()) ?? {};

@@ -7,7 +7,7 @@ import { uiState } from "./uiState";
 import { Logger } from "../utils/logger";
 import type { BacklinksLayoutHandlers } from "./../types";
 
-const ENABLE_LOG = false;
+const ENABLE_LOG_HB = false;
 
 export class BacklinksLayout {
   constructor(private app: App) { }
@@ -25,7 +25,7 @@ export class BacklinksLayout {
   private rootEl: HTMLDivElement | null = null;
 
   public setCallbacks(callbacks: BacklinksLayoutHandlers) {
-    console.log('[HB][layout] setCallbacks called', !!callbacks);
+    Logger.debug(ENABLE_LOG_HB,'[HB][layout] setCallbacks called', !!callbacks);
     this.callbacks = callbacks;
   }
 
@@ -170,8 +170,8 @@ export class BacklinksLayout {
         uiState.query = q;
         // Debug: confirm we are dispatching into the latest callbacks
         // layout.ts (inside searchBar.onChange handler)
-        console.log('[HB][layout] search input ->', q, 'callbacks?', !!this.callbacks);
-        try { console.log('[HB][layout] search input ->', q, 'callbacks?', !!this.callbacks); } catch (_) { }
+        Logger.debug(ENABLE_LOG_HB,'[HB][layout] search input ->', q, 'callbacks?', !!this.callbacks);
+        try { Logger.debug(ENABLE_LOG_HB,'[HB][layout] search input ->', q, 'callbacks?', !!this.callbacks); } catch (_) { }
         this.callbacks?.onSearchChange?.(q);
       });
     } else {
@@ -204,13 +204,13 @@ export class BacklinksLayout {
   public renderTree(hierarchy: TreeNode[]): TreeNodeView[] {
     if (!this.rootContainerEl) throw new Error('BacklinksLayout.renderTree: scroll container not mounted');
 
-    console.log('[HB][layout] renderTree: start, hierarchy.len =', hierarchy?.length);
+    Logger.debug(ENABLE_LOG_HB,'[HB][layout] renderTree: start, hierarchy.len =', hierarchy?.length);
 
     this.roots = hierarchy;
 
     // Clear current contents
     this.rootContainerEl.empty();
-    console.log('[HB][layout] renderTree: after empty, child count =', this.rootContainerEl.childElementCount);
+    Logger.debug(ENABLE_LOG_HB,'[HB][layout] renderTree: after empty, child count =', this.rootContainerEl.childElementCount);
 
 
     // Section header
@@ -236,7 +236,7 @@ export class BacklinksLayout {
       });
     }
 
-    console.log('[HB][layout] renderTree: built node DOM, child count =', this.rootContainerEl.childElementCount);
+    Logger.debug(ENABLE_LOG_HB,'[HB][layout] renderTree: built node DOM, child count =', this.rootContainerEl.childElementCount);
     // If there is an active query, ask the view to filter again
     if (uiState.query && uiState.query.trim().length > 0) {
       this.callbacks?.onSearchChange(uiState.query);
