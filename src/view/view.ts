@@ -377,6 +377,8 @@ export class HierarchicalBacklinksView extends ItemView {
                 : this.originalHierarchy;
             this.treeNodeViews = this.layout.renderTree(toRender);
             this.updateSortOrder(this.sortDescending);
+            // Reapply global UI state (list/content/flatten/sort/search) to the freshly-rendered tree
+            this.applyGlobalsFromUiState();
         }
 
         // ⌨️ After remount: if search is not open, ensure the editor leaf stays active & focused.
