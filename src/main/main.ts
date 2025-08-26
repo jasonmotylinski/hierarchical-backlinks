@@ -1,8 +1,8 @@
 import { Plugin, WorkspaceLeaf, Notice } from "obsidian";
 import { HierarchicalBacklinksSettingTab, DEFAULT_SETTINGS } from "./settings"; // Ensure this path is correct
-import { HierarchicalBacklinksView, VIEW_TYPE } from "./view";
-import { uiState } from "./ui/uiState";
-import { HierarchicalBacklinksSettings } from "./types";
+import { HierarchicalBacklinksView, VIEW_TYPE } from "../view/view";
+import { uiState } from "../ui/uiState";
+import { HierarchicalBacklinksSettings } from "../types";
 import LockService from "./lockService";
 
 export default class HierarchicalBacklinksPlugin extends Plugin {

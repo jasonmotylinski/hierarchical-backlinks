@@ -1,10 +1,10 @@
 import { App, setIcon } from "obsidian";
-import { SearchResultFileMatchView } from "./searchResultFileMatchView";
-import { ContentReference, ViewState, NodeViewState, NodeId } from "./types";
+import { SearchResultFileMatchView } from "../view/searchResultFileMatchView";
+import { ContentReference, ViewState, NodeViewState, NodeId } from "../types";
 import { TreeNode } from "./treeNode";
-import { Logger } from "./utils/logger";
-import { uiState } from "./ui/uiState";
-import { getOrCreateNodeViewState } from "./viewState";
+import { Logger } from "../utils/logger";
+import { uiState } from "../ui/uiState";
+import { getOrCreateNodeViewState } from "../view/viewState";
 
 const ENABLE_LOG_TOGGLE = false; // Set to true to enable toggle logging
 const ENABLE_LOG_CREATE = false; // Set to true to enable node creation logging

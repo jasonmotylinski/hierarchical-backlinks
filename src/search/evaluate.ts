@@ -1,7 +1,7 @@
 // src/search/eval.ts
 import type { Clause, Term } from "./parse";
 import { parseSearchQuery } from "./parse";
-import type { TreeNode } from "../treeNode";
+import type { TreeNode } from "../tree/treeNode";
 import { Logger } from "./../utils/logger";
 const ENABLE_LOG_SEARCH = false; // fine-grained toggle for search debug in this file
 

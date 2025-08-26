@@ -1,14 +1,14 @@
 import { ItemView, WorkspaceLeaf, MarkdownView } from "obsidian";
-import { File } from "./file";
-import HierarchicalBacklinksPlugin from "./main";
-import { TreeNode } from "./treeNode";
-import { TreeNodeView } from "./treeNodeView";
-import { ViewState, NodeViewState, LockedTreeSnapshot } from "./types";
-import { parseSearchQuery } from "./search/parse";
-import { makePredicate } from "./search/evaluate";
-import { Logger } from "./utils/logger";
-import { uiState } from "./ui/uiState";
-import { BacklinksLayout } from "./ui/layout";
+import { File } from "../data/file";
+import HierarchicalBacklinksPlugin from "../main/main";
+import { TreeNode } from "../tree/treeNode";
+import { TreeNodeView } from "../tree/treeNodeView";
+import { ViewState, NodeViewState, LockedTreeSnapshot } from "../types";
+import { parseSearchQuery } from "../search/parse";
+import { makePredicate } from "../search/evaluate";
+import { Logger } from "../utils/logger";
+import { uiState } from "../ui/uiState";
+import { BacklinksLayout } from "../ui/layout";
 import { getOrCreateNodeViewState } from "./viewState";
 
 const ENABLE_LOG_FILTER = true; // enable logging in filter-related methods

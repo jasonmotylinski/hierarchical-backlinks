@@ -1,6 +1,6 @@
 import { App } from "obsidian";
-import { VIEW_TYPE } from "./view";
-import { LockedTreeSnapshot } from "./types";
+import { VIEW_TYPE } from "../view/view";
+import { LockedTreeSnapshot } from "../types";
 
 export default class LockService {
   private store = new Map<string, LockedTreeSnapshot>();

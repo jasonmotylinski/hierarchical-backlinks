@@ -1,6 +1,6 @@
 import { PluginSettingTab, Setting } from "obsidian";
 import type HierarchicalBacklinksPlugin from "./main";
-import { HierarchicalBacklinksSettings } from "./types";
+import { HierarchicalBacklinksSettings } from "../types";
 
 export const DEFAULT_SETTINGS: HierarchicalBacklinksSettings = {
   toggleLeafNodes: false,

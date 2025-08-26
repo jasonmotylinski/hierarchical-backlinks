@@ -1,6 +1,6 @@
 import { SearchMatches } from "obsidian";
-import { TreeNode } from "./treeNode";
-import { TreeNodeView } from "./treeNodeView";
+import { TreeNode } from "./tree/treeNode";
+import { TreeNodeView } from "./tree/treeNodeView";
 
 export interface HierarchicalBacklinksSettings {
   toggleLeafNodes: boolean;

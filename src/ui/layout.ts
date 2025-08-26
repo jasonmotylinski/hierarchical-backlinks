@@ -1,8 +1,8 @@
 import { App } from "obsidian";
 import { NavButtonsView } from "../nav/navButtonsView";
 import { SearchBar } from "../nav/searchBar";
-import { TreeNode } from "../treeNode";
-import { TreeNodeView } from "../treeNodeView";
+import { TreeNode } from "../tree/treeNode";
+import { TreeNodeView } from "../tree/treeNodeView";
 import { uiState } from "./uiState";
 import { Logger } from "../utils/logger";
 import type { BacklinksLayoutHandlers } from "./../types";

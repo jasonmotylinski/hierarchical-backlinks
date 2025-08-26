@@ -1,6 +1,6 @@
 import { App, SearchMatchPart } from "obsidian";
 
-import { ContentReference } from "./types";
+import { ContentReference } from "../types";
 
 export class SearchResultFileMatchView {
     private app: App;

@@ -1,6 +1,6 @@
 import { App, TFile, SearchMatchPart } from "obsidian";
-import { BacklinkReference, ContentReference } from "./types";
-import { TreeNode } from "./treeNode";
+import { BacklinkReference, ContentReference } from "../types";
+import { TreeNode } from "../tree/treeNode";
 
 
 export class File {
