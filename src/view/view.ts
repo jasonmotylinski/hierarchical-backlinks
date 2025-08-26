@@ -137,7 +137,11 @@ export class HierarchicalBacklinksView extends ItemView {
             onListToggle: (collapsed: boolean) => {
                 setTimeout(() => self.refocusEditorIfNoSearch(), 0);
                 console.log('[HB][view] cb:list', { collapsed, locked: self.isNoteLocked(), nodes: self.treeNodeViews.length });
-                if (self.isNoteLocked()) return;
+                if (self.isNoteLocked()) {
+                    // revert UI to global state when locked
+                    self.layout?.setListActive(!!uiState.listCollapsed);
+                    return;
+                }
                 if (collapsed) self.treeNodeViews.forEach((n) => n.listToggleOn());
                 else self.treeNodeViews.forEach((n) => n.listToggleOff());
                 self.layout?.setListActive(collapsed);
@@ -145,7 +149,10 @@ export class HierarchicalBacklinksView extends ItemView {
             onContentToggle: (collapsed: boolean) => {
                 setTimeout(() => self.refocusEditorIfNoSearch(), 0);
                 console.log('[HB][view] cb:content', { collapsed, locked: self.isNoteLocked(), nodes: self.treeNodeViews.length });
-                if (self.isNoteLocked()) return;
+                if (self.isNoteLocked()) {
+                    self.layout?.setContentActive(!!uiState.contentCollapsed);
+                    return;
+                }
                 if (collapsed) self.treeNodeViews.forEach((n) => n.contentHiddenToggleOn());
                 else self.treeNodeViews.forEach((n) => n.contentHiddenToggleOff());
                 self.layout?.setContentActive(collapsed);
@@ -160,7 +167,10 @@ export class HierarchicalBacklinksView extends ItemView {
             onSortToggle: (descending: boolean) => {
                 setTimeout(() => self.refocusEditorIfNoSearch(), 0);
                 console.log('[HB][view] cb:sort', { descending, locked: self.isNoteLocked(), nodes: self.treeNodeViews.length });
-                if (self.isNoteLocked()) return;
+                if (self.isNoteLocked()) {
+                    self.layout?.setSortActive(!!uiState.sortCollapsed);
+                    return;
+                }
                 self.layout?.setSortActive(descending);
                 self.updateSortOrder(descending);
                 if ((uiState.query ?? "").length > 0) self.filterBacklinks(uiState.query);
@@ -168,7 +178,10 @@ export class HierarchicalBacklinksView extends ItemView {
             onFlattenToggle: (flattened: boolean) => {
                 setTimeout(() => self.refocusEditorIfNoSearch(), 0);
                 console.log('[HB][view] cb:flatten', { flattened, locked: self.isNoteLocked(), nodes: self.treeNodeViews.length });
-                if (self.isNoteLocked()) return;
+                if (self.isNoteLocked()) {
+                    self.layout?.setFlattenActive(!!uiState.flattenCollapsed);
+                    return;
+                }
                 self.layout?.setFlattenActive(flattened);
                 self.toggleFlatten(flattened);
                 if ((uiState.query ?? "").length > 0) self.filterBacklinks(uiState.query);
@@ -182,19 +195,20 @@ export class HierarchicalBacklinksView extends ItemView {
                     self.plugin.locks.set(self.currentNoteId, s);
                     self.layout?.setLockActive(true);
                 } else {
-                    self.plugin.locks.delete(self.currentNoteId);
-                    self.layout?.setLockActive(false);
-                    self.applyListAndContentGlobalsInPlace();
-                    const wantFlatten = !!uiState.flattenCollapsed;
-                    if (wantFlatten !== self.isFlattened) {
-                        self.layout?.setFlattenActive(wantFlatten);
-                        self.toggleFlatten(wantFlatten);
-                        if ((uiState.query ?? '').length > 0) self.filterBacklinks(uiState.query);
-                    } else {
-                        self.layout?.setSortActive(!!uiState.sortCollapsed);
-                        self.updateSortOrder(!!uiState.sortCollapsed);
-                        if ((uiState.query ?? '').length > 0) self.filterBacklinks(uiState.query);
+                    // Fully release the snapshot and rebuild from globals
+                    const noteId = self.currentNoteId;
+                    if (noteId) {
+                        const had = self.plugin.locks.has(noteId);
+                        self.plugin.locks.delete(noteId);
+                        console.log('[HB][lock] unlock: release', noteId, 'had=', had, 'nowHas=', self.plugin.locks.has(noteId));
                     }
+                    if (self.viewState) self.viewState.isLocked = false;
+                    // Drop any cached flattened variant derived from the snapshot
+                    self.flattenedHierarchy = [];
+                    // Re-init will fetch fresh hierarchy and apply global toggles/search
+                    self.layout?.setLockActive(false);
+                    self.initialize?.();
+                    return; // do not fall through into any stale-path logic
                 }
             },
             // Some layouts read these on first mount; harmless if ignored by setCallbacks
