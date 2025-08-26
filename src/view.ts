@@ -19,6 +19,11 @@ export const VIEW_TYPE = "hierarchical-backlinks";
 
 
 export class HierarchicalBacklinksView extends ItemView {
+    // ---- diagnostics: suppress bursty initialize() calls tied to header clicks ----
+    private suppressInitUntil = 0;
+    private suppressInit(ms = 200) { this.suppressInitUntil = Date.now() + ms; }
+    private shouldSuppressInit() { return Date.now() < this.suppressInitUntil; }
+
     private plugin: HierarchicalBacklinksPlugin;
     private treeNodeViews: TreeNodeView[] = [];
     private originalHierarchy: TreeNode[] = [];
@@ -32,6 +37,7 @@ export class HierarchicalBacklinksView extends ItemView {
     private sortSnapshot?: Map<string, { isCollapsed: boolean; isVisible: boolean }>;
     private searchSeq: number = 0;
     private debugHooksInstalled: boolean = false;
+    private lastEditorLeaf: WorkspaceLeaf | null = null;
     constructor(leaf: WorkspaceLeaf, plugin: HierarchicalBacklinksPlugin) {
         super(leaf);
         this.plugin = plugin;
@@ -97,7 +103,34 @@ export class HierarchicalBacklinksView extends ItemView {
         this.layout?.focusSearch?.();
     }
 
+    /** After a navbar action, keep editor history hotkeys working.
+     *  If the search bar is visible, we leave focus there. */
+    private refocusEditorIfNoSearch() {
+        const searchOpen = this.layout?.isSearchVisible?.() ?? false;
+        if (searchOpen) return;
+
+        // Prefer the last known Markdown editor leaf; fall back to current if available
+        let leaf: WorkspaceLeaf | null = this.lastEditorLeaf
+            ?? this.app.workspace.getActiveViewOfType(MarkdownView)?.leaf
+            ?? null;
+        if (!leaf) {
+            console.log('[HB] refocusEditorIfNoSearch: no editor leaf to focus');
+            return;
+        }
+        this.app.workspace.setActiveLeaf(leaf, false, false);
+        const mv = leaf.view as MarkdownView | null;
+        try {
+            mv?.editor?.focus();
+            // console.log('[HB] refocusEditorIfNoSearch: focused editor');
+        } catch (_) { }
+    }
+
     async initialize() {
+
+        console.group("[HB] initialize(): TRACE");
+        console.trace();
+        console.groupEnd();
+
         Logger.debug(ENABLE_LOG_SORT, "[initialize] start");
         const ae0 = document.activeElement as HTMLElement | null;
         const editorHadFocus0 = !!ae0?.closest?.('.cm-editor');
@@ -122,14 +155,23 @@ export class HierarchicalBacklinksView extends ItemView {
 
             // Mouse path diagnostics (capture phase) to see what bubbles up
             this.containerEl.addEventListener('pointerdown', (e) => {
+                const header = this.containerEl.querySelector(".nav-header") as HTMLElement | null;
+                if (header && header.contains(e.target as Node)) this.suppressInit(250);
+
                 const t = e.target as HTMLElement | null;
                 console.log('[HB] pointerdown in HB view (capture) — target =', t?.tagName, t?.className);
             }, true);
             this.containerEl.addEventListener('mousedown', (e) => {
+                const header = this.containerEl.querySelector(".nav-header") as HTMLElement | null;
+                if (header && header.contains(e.target as Node)) this.suppressInit(250);
+
                 const t = e.target as HTMLElement | null;
                 console.log('[HB] mousedown in HB view (capture) — target =', t?.tagName, t?.className);
             }, true);
             this.containerEl.addEventListener('click', (e) => {
+                const header = this.containerEl.querySelector(".nav-header") as HTMLElement | null;
+                if (header && header.contains(e.target as Node)) this.suppressInit(250);
+
                 const t = e.target as HTMLElement | null;
                 console.log('[HB] click in HB view (capture) — target =', t?.tagName, t?.className);
             }, true);
@@ -151,7 +193,7 @@ export class HierarchicalBacklinksView extends ItemView {
             this.viewState = snap.viewState;
             this.viewState.isLocked = true;
             this.originalHierarchy = snap.hierarchy;
-        
+
             // Mount header once (or reuse) and render tree only
             if (!this.layout) {
                 this.layout = new BacklinksLayout(this.app);
@@ -162,35 +204,41 @@ export class HierarchicalBacklinksView extends ItemView {
                         return v;
                     },
                     onListToggle: (collapsed) => {
+                        setTimeout(() => this.refocusEditorIfNoSearch(), 0);
                         if (this.isNoteLocked()) return;
                         if (collapsed) this.treeNodeViews.forEach((n) => n.listToggleOn());
                         else this.treeNodeViews.forEach((n) => n.listToggleOff());
                         this.layout?.setListActive(collapsed);
                     },
                     onContentToggle: (collapsed) => {
+                        setTimeout(() => this.refocusEditorIfNoSearch(), 0);
                         if (this.isNoteLocked()) return;
                         if (collapsed) this.treeNodeViews.forEach((n) => n.contentHiddenToggleOn());
                         else this.treeNodeViews.forEach((n) => n.contentHiddenToggleOff());
                         this.layout?.setContentActive(collapsed);
                     },
                     onSearchChange: (q) => {
+                        setTimeout(() => this.refocusEditorIfNoSearch(), 0);
                         if (this.isNoteLocked()) return;
                         if ((uiState.query ?? "") === (q ?? "")) return;
                         this.filterBacklinks(q);
                     },
                     onSortToggle: (descending: boolean) => {
+                        setTimeout(() => this.refocusEditorIfNoSearch(), 0);
                         if (this.isNoteLocked()) return;
                         this.layout?.setSortActive(descending);
                         this.updateSortOrder(descending);
                         if ((uiState.query ?? "").length > 0) this.filterBacklinks(uiState.query);
                     },
                     onFlattenToggle: (flattened: boolean) => {
+                        setTimeout(() => this.refocusEditorIfNoSearch(), 0);
                         if (this.isNoteLocked()) return;
                         this.layout?.setFlattenActive(flattened);
                         this.toggleFlatten(flattened);
                         if ((uiState.query ?? "").length > 0) this.filterBacklinks(uiState.query);
                     },
                     onLockToggle: (locked: boolean) => {
+                        setTimeout(() => this.refocusEditorIfNoSearch(), 0);
                         if (!this.currentNoteId || !this.viewState) return;
                         if (locked) {
                             const s = this.captureSnapshot();
@@ -224,35 +272,41 @@ export class HierarchicalBacklinksView extends ItemView {
                         return v;
                     },
                     onListToggle: (collapsed) => {
+                        setTimeout(() => this.refocusEditorIfNoSearch(), 0);
                         if (this.isNoteLocked()) return;
                         if (collapsed) this.treeNodeViews.forEach((n) => n.listToggleOn());
                         else this.treeNodeViews.forEach((n) => n.listToggleOff());
                         this.layout?.setListActive(collapsed);
                     },
                     onContentToggle: (collapsed) => {
+                        setTimeout(() => this.refocusEditorIfNoSearch(), 0);
                         if (this.isNoteLocked()) return;
                         if (collapsed) this.treeNodeViews.forEach((n) => n.contentHiddenToggleOn());
                         else this.treeNodeViews.forEach((n) => n.contentHiddenToggleOff());
                         this.layout?.setContentActive(collapsed);
                     },
                     onSearchChange: (q) => {
+                        setTimeout(() => this.refocusEditorIfNoSearch(), 0);
                         if (this.isNoteLocked()) return;
                         if ((uiState.query ?? "") === (q ?? "")) return;
                         this.filterBacklinks(q);
                     },
                     onSortToggle: (descending: boolean) => {
+                        setTimeout(() => this.refocusEditorIfNoSearch(), 0);
                         if (this.isNoteLocked()) return;
                         this.layout?.setSortActive(descending);
                         this.updateSortOrder(descending);
                         if ((uiState.query ?? "").length > 0) this.filterBacklinks(uiState.query);
                     },
                     onFlattenToggle: (flattened: boolean) => {
+                        setTimeout(() => this.refocusEditorIfNoSearch(), 0);
                         if (this.isNoteLocked()) return;
                         this.layout?.setFlattenActive(flattened);
                         this.toggleFlatten(flattened);
                         if ((uiState.query ?? "").length > 0) this.filterBacklinks(uiState.query);
                     },
                     onLockToggle: (locked: boolean) => {
+                        setTimeout(() => this.refocusEditorIfNoSearch(), 0);
                         if (!this.currentNoteId || !this.viewState) return;
                         if (locked) {
                             const s = this.captureSnapshot();
@@ -282,19 +336,19 @@ export class HierarchicalBacklinksView extends ItemView {
             // Render the snapshot tree only; header stays
             this.treeNodeViews = [];
             this.treeNodeViews = this.layout.renderTree(this.originalHierarchy);
-        
+
         } else {
             console.log('[HB] initialize(): UNLOCKED — globals => sortDescending =', this.sortDescending, ', isFlattened =', this.isFlattened);
-        
+
             this.viewState = { nodeStates: new Map<string, NodeViewState>(), isLocked: false };
-        
+
             const file = new File(this.app, activeFile);
             const hierarchy = await file.getBacklinksHierarchy();
             this.originalHierarchy = hierarchy;
-        
+
             this.sortDescending = uiState.sortCollapsed ?? false;
             this.isFlattened = uiState.flattenCollapsed ?? false;
-        
+
             // Ensure header exists
             if (!this.layout) {
                 this.layout = new BacklinksLayout(this.app);
@@ -305,35 +359,41 @@ export class HierarchicalBacklinksView extends ItemView {
                         return v;
                     },
                     onListToggle: (collapsed) => {
+                        setTimeout(() => this.refocusEditorIfNoSearch(), 0);
                         if (this.isNoteLocked()) return;
                         if (collapsed) this.treeNodeViews.forEach((n) => n.listToggleOn());
                         else this.treeNodeViews.forEach((n) => n.listToggleOff());
                         this.layout?.setListActive(collapsed);
                     },
                     onContentToggle: (collapsed) => {
+                        setTimeout(() => this.refocusEditorIfNoSearch(), 0);
                         if (this.isNoteLocked()) return;
                         if (collapsed) this.treeNodeViews.forEach((n) => n.contentHiddenToggleOn());
                         else this.treeNodeViews.forEach((n) => n.contentHiddenToggleOff());
                         this.layout?.setContentActive(collapsed);
                     },
                     onSearchChange: (q) => {
+                        setTimeout(() => this.refocusEditorIfNoSearch(), 0);
                         if (this.isNoteLocked()) return;
                         if ((uiState.query ?? "") === (q ?? "")) return;
                         this.filterBacklinks(q);
                     },
                     onSortToggle: (descending: boolean) => {
+                        setTimeout(() => this.refocusEditorIfNoSearch(), 0);
                         if (this.isNoteLocked()) return;
                         this.layout?.setSortActive(descending);
                         this.updateSortOrder(descending);
                         if ((uiState.query ?? "").length > 0) this.filterBacklinks(uiState.query);
                     },
                     onFlattenToggle: (flattened: boolean) => {
+                        setTimeout(() => this.refocusEditorIfNoSearch(), 0);
                         if (this.isNoteLocked()) return;
                         this.layout?.setFlattenActive(flattened);
                         this.toggleFlatten(flattened);
                         if ((uiState.query ?? "").length > 0) this.filterBacklinks(uiState.query);
                     },
                     onLockToggle: (locked: boolean) => {
+                        setTimeout(() => this.refocusEditorIfNoSearch(), 0);
                         if (!this.currentNoteId || !this.viewState) return;
                         if (locked) {
                             const s = this.captureSnapshot();
@@ -366,35 +426,41 @@ export class HierarchicalBacklinksView extends ItemView {
                         return v;
                     },
                     onListToggle: (collapsed) => {
+                        setTimeout(() => this.refocusEditorIfNoSearch(), 0);
                         if (this.isNoteLocked()) return;
                         if (collapsed) this.treeNodeViews.forEach((n) => n.listToggleOn());
                         else this.treeNodeViews.forEach((n) => n.listToggleOff());
                         this.layout?.setListActive(collapsed);
                     },
                     onContentToggle: (collapsed) => {
+                        setTimeout(() => this.refocusEditorIfNoSearch(), 0);
                         if (this.isNoteLocked()) return;
                         if (collapsed) this.treeNodeViews.forEach((n) => n.contentHiddenToggleOn());
                         else this.treeNodeViews.forEach((n) => n.contentHiddenToggleOff());
                         this.layout?.setContentActive(collapsed);
                     },
                     onSearchChange: (q) => {
+                        setTimeout(() => this.refocusEditorIfNoSearch(), 0);
                         if (this.isNoteLocked()) return;
                         if ((uiState.query ?? "") === (q ?? "")) return;
                         this.filterBacklinks(q);
                     },
                     onSortToggle: (descending: boolean) => {
+                        setTimeout(() => this.refocusEditorIfNoSearch(), 0);
                         if (this.isNoteLocked()) return;
                         this.layout?.setSortActive(descending);
                         this.updateSortOrder(descending);
                         if ((uiState.query ?? "").length > 0) this.filterBacklinks(uiState.query);
                     },
                     onFlattenToggle: (flattened: boolean) => {
+                        setTimeout(() => this.refocusEditorIfNoSearch(), 0);
                         if (this.isNoteLocked()) return;
                         this.layout?.setFlattenActive(flattened);
                         this.toggleFlatten(flattened);
                         if ((uiState.query ?? "").length > 0) this.filterBacklinks(uiState.query);
                     },
                     onLockToggle: (locked: boolean) => {
+                        setTimeout(() => this.refocusEditorIfNoSearch(), 0);
                         if (!this.currentNoteId || !this.viewState) return;
                         if (locked) {
                             const s = this.captureSnapshot();
@@ -421,7 +487,7 @@ export class HierarchicalBacklinksView extends ItemView {
                 });
                 this.layout.setLockActive(false);
             }
-        
+
             // Render tree based on flatten state
             this.treeNodeViews = [];
             const toRender = this.isFlattened
@@ -471,19 +537,41 @@ export class HierarchicalBacklinksView extends ItemView {
         this.syncNavbarFromGlobals();
     }
 
-    register_events() {
-        this.plugin.registerEvent(this.app.metadataCache.on("changed", () => {
-            this.initialize();
-        }));
-/*
-        this.plugin.registerEvent(this.app.workspace.on("layout-change", () => {
-            this.initialize();
-        }));
-*/
-        this.plugin.registerEvent(this.app.workspace.on("file-open", () => {
+    private register_events() {
+        this.plugin.registerEvent(this.app.metadataCache.on("changed", (file) => {
+            if (this.shouldSuppressInit()) {
+                console.log("[HB] initialize() suppressed: cause=metadataCache.changed", file?.path);
+                return;
+            }
+            console.log("[HB] initialize cause = metadataCache.changed", file?.path);
             this.initialize();
         }));
 
+        // Keep layout-change commented out
+        // this.plugin.registerEvent(this.app.workspace.on("layout-change", () => { ... }));
+
+        this.plugin.registerEvent(this.app.workspace.on("file-open", (file) => {
+            if (this.shouldSuppressInit()) {
+                console.log("[HB] initialize() suppressed: cause=workspace.file-open", file?.path);
+                return;
+            }
+            // Track the last editor leaf so we can restore focus after navbar clicks
+            const activeEditor = this.app.workspace.getActiveViewOfType(MarkdownView);
+            if (activeEditor?.leaf) this.lastEditorLeaf = activeEditor.leaf;
+
+            console.log("[HB] initialize cause = workspace.file-open", file?.path);
+            this.initialize();
+        }));
+
+        // Also track active leaf changes to keep lastEditorLeaf up to date
+        this.plugin.registerEvent(this.app.workspace.on("active-leaf-change", (leaf) => {
+            const v = leaf?.view;
+            // @ts-ignore: runtime check
+            if (v && v instanceof MarkdownView) {
+                this.lastEditorLeaf = leaf!;
+                // console.log('[HB] lastEditorLeaf updated via active-leaf-change');
+            }
+        }));
     }
 
     async onOpen() {
@@ -495,7 +583,7 @@ export class HierarchicalBacklinksView extends ItemView {
         // Use renderTree only; header is managed by initialize/mountHeader
         this.treeNodeViews = [];
         this.treeNodeViews = this.layout!.renderTree(hierarchy);
-    
+
         // If we’re in the special sort-restore path
         if (this.isSortRestore && this.sortSnapshot) {
             this.restoreNodeStatesFrom(this.sortSnapshot);
@@ -504,7 +592,7 @@ export class HierarchicalBacklinksView extends ItemView {
             this.sortSnapshot = undefined;
             return;
         }
-    
+
         // Apply global list/content only when unlocked
         if (!this.isNoteLocked()) {
             if (uiState.listCollapsed) this.treeNodeViews.forEach(v => v.listToggleOn());
@@ -512,7 +600,7 @@ export class HierarchicalBacklinksView extends ItemView {
             if (uiState.contentCollapsed) this.treeNodeViews.forEach(v => v.contentHiddenToggleOn());
             else this.treeNodeViews.forEach(v => v.contentHiddenToggleOff());
         }
-    
+
         for (const v of this.treeNodeViews) v.applyNodeViewStateToUI();
     }
 
