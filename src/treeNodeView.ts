@@ -1,10 +1,9 @@
-import { App, setIcon } from "obsidian";
+import { App, Events, setIcon } from "obsidian";
 import { SearchResultFileMatchView } from "./searchResultFileMatchView";
 import { ContentReference, TreeNode } from "./types";
 
-export class TreeNodeView{
+export class TreeNodeView extends Events{
     private app: App;
-    private isCollapsed: boolean;
     private parent: HTMLDivElement;
     private treeItem: HTMLDivElement;
     private treeItemSelf: HTMLDivElement;
@@ -12,8 +11,9 @@ export class TreeNodeView{
     private treeNode: TreeNode;
     private treeNodeViewChildren: TreeNodeView[];
     constructor(app: App, parent: HTMLDivElement, treeNode: TreeNode) {
+        super();
         this.app=app;
-        this.isCollapsed=false;
+    
         this.parent=parent;
         this.treeNode=treeNode;
         this.treeNodeViewChildren=[];
@@ -91,7 +91,7 @@ export class TreeNodeView{
             const nextDiv = this.treeItemSelf.nextSibling as HTMLDivElement;
             nextDiv.style.display="block";
         }
-
+        this.trigger("collapse-click", null);
         this.treeNodeViewChildren.forEach((c)=>{c.toggleOn()});
     }
     
@@ -103,18 +103,20 @@ export class TreeNodeView{
             const nextDiv = this.treeItemSelf.nextSibling as HTMLDivElement;
             nextDiv.style.display="none";
         }
-
+        this.trigger("collapse-click", null);
         this.treeNodeViewChildren.forEach((c)=>{c.toggleOff()});
     }
 
     toggle(){
-        if(this.isCollapsed){
-            this.isCollapsed=false;
-            this.toggleOff();
-        }else{
-            this.isCollapsed=true;
+        if( this.treeItemSelf.hasClass("is-collapsed")){
             this.toggleOn();
+        }else{
+            this.toggleOff();
         }
     }
+
+    isCollapsed(): boolean{
+        return this.treeItemSelf.hasClass("is-collapsed");
+    }   
 
 }

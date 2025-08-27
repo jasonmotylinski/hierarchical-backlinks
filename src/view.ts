@@ -49,6 +49,15 @@ export class HierarchicalBacklinksView extends ItemView {
         const pane=container.createDiv({cls: "backlink-pane"});
         this.appendLinks(pane, navButtonsView,"Linked mentions", hierarchy);
 
+        this.treeNodeViews.forEach((t)=>{
+            t.on("collapse-click", (e)=>{
+                if(this.treeNodeViews.every((n)=>n.isCollapsed())){
+                    navButtonsView.collapseButton.addHighlight();
+                }else{
+                    navButtonsView.collapseButton.removeHighlight();
+                }
+            });
+        });
         navButtonsView.collapseButton.on("collapse-click", (e)=> {
             if(navButtonsView.collapseButton.isCollapsed()){
                 this.treeNodeViews.forEach((n)=>{

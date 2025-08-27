@@ -18,15 +18,38 @@ export class CollapseButton extends Events  {
         setIcon( this.button, 'list');
 
         if(this.plugin.settings.collapseButtonState){
-            this.button.addClass("is-active");   
+           this.collapse();
+        }else{
+              this.expand();    
         }
-        this.trigger("collapse-click", null);
 
         this.button.addEventListener("click", (e)=>{ 
-            this.button.classList.toggle('is-active');
-            this.trigger("collapse-click", e);
-            this.plugin.saveData({collapseButtonState: this.isCollapsed()});
+            this.toggle();
         });
+    }
+
+    addHighlight(){
+        this.button.addClass("is-active");
+    }
+    removeHighlight(){
+        this.button.removeClass("is-active");
+    }
+    collapse(){
+        this.addHighlight();
+        this.trigger("collapse-click", null);
+        this.plugin.saveData({collapseButtonState: this.isCollapsed()});
+    }
+
+    expand(){
+        this.removeHighlight();
+        this.trigger("collapse-click", null);
+        this.plugin.saveData({collapseButtonState: this.isCollapsed()});
+    }
+
+    toggle(){
+        this.button.classList.toggle('is-active');
+        this.trigger("collapse-click", null);
+        this.plugin.saveData({collapseButtonState: this.isCollapsed()});
     }
 
     isCollapsed(): boolean{
