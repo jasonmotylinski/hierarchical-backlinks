@@ -1,8 +1,14 @@
 import {  Plugin, WorkspaceLeaf } from 'obsidian';
 import {HierarchicalBacklinksView, VIEW_TYPE} from "./view";
+import { PluginSettings } from './types';
 
 export default class HierarchicalBacklinksPlugin extends Plugin {
+    settings: PluginSettings;
+    DEFAULT_SETTINGS: Partial<PluginSettings> = {
+        collapseButtonState: false
+    };
     async onload() {
+        await this.loadSettings();
         this.registerView(
             VIEW_TYPE,
             (leaf) => new HierarchicalBacklinksView(leaf, this)
@@ -16,7 +22,9 @@ export default class HierarchicalBacklinksPlugin extends Plugin {
             },
         });
     }
-    
+    async loadSettings() {
+        this.settings = Object.assign({}, this.DEFAULT_SETTINGS, await this.loadData());
+    }
     async onUserEnable(){
         this.activateView();
     }

@@ -38,3 +38,6 @@ export interface ContentReference {
 	path: string;
 }
 
+export interface PluginSettings {
+    collapseButtonState: boolean | false;
+  }

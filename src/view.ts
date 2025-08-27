@@ -29,6 +29,7 @@ export class HierarchicalBacklinksView extends ItemView {
     }
 
     async initialize(){
+        this.plugin.loadSettings();
         const container=this.containerEl.children[1];
         container.empty();
         const activeFile=this.app.workspace.getActiveFile();
@@ -42,8 +43,11 @@ export class HierarchicalBacklinksView extends ItemView {
 
     createPane(container :Element, hierarchy :TreeNode[]){
         
-        const navButtonsView=new NavButtonsView(this.app, container);
-        navButtonsView.render();
+        const navButtonsView=new NavButtonsView(this.app, this.plugin, container);
+        navButtonsView.create();
+
+        const pane=container.createDiv({cls: "backlink-pane"});
+        this.appendLinks(pane, navButtonsView,"Linked mentions", hierarchy);
 
         navButtonsView.collapseButton.on("collapse-click", (e)=> {
             if(navButtonsView.collapseButton.isCollapsed()){
@@ -57,8 +61,8 @@ export class HierarchicalBacklinksView extends ItemView {
             }
         });
 
-        const pane=container.createDiv({cls: "backlink-pane"});
-        this.appendLinks(pane, navButtonsView,"Linked mentions", hierarchy);
+        navButtonsView.render();
+
     }
 
     appendLinks(pane :HTMLDivElement, navButtonsView: NavButtonsView,headerText :string, links: any[]){
