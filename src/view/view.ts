@@ -7,7 +7,6 @@ import { ViewState, NodeViewState, LockedTreeSnapshot } from "../types";
 import { Logger } from "../utils/logger";
 import { uiState } from "../ui/uiState";
 import { BacklinksLayout } from "../ui/layout";
-import { getOrCreateNodeViewState } from "./viewState";
 import { cloneHierarchy, deepSortHierarchy, buildFlattenedHierarchy } from "./treeUtils";
 import { applyFilter } from "./filter";
 import { installDebugHooks } from "../utils/diagnostics";
@@ -223,7 +222,6 @@ export class HierarchicalBacklinksView extends ItemView {
     }
 
     async initialize() {
-
         if (ENABLE_LOG_HB) {
             console.group("[HB] initialize(): TRACE");
             console.trace();
@@ -231,14 +229,18 @@ export class HierarchicalBacklinksView extends ItemView {
         }
 
         Logger.debug(ENABLE_LOG_SORT, "[initialize] start");
-        const ae0 = document.activeElement as HTMLElement | null;
-        const editorHadFocus0 = !!ae0?.closest?.('.cm-editor');
-        Logger.debug(ENABLE_LOG_HB, '[HB] initialize(): start; activeElement =', ae0?.tagName, ae0?.className, '| editorHadFocus =', editorHadFocus0);
+
+        if (ENABLE_LOG_HB) {
+            const ae0 = document.activeElement as HTMLElement | null;
+            const editorHadFocus0 = !!ae0?.closest?.('.cm-editor');
+            Logger.debug(ENABLE_LOG_HB, '[HB] initialize(): start; activeElement =', ae0?.tagName, ae0?.className, '| editorHadFocus =', editorHadFocus0);
+        }
+
         const container = this.containerEl.children[1] as HTMLElement; // .view-content
 
         // Remember the editor leaf; we’ll restore it after remount if needed
         const editorView = this.app.workspace.getActiveViewOfType(MarkdownView) || null;
-        const editorLeaf = editorView?.leaf || null;
+        this.lastEditorLeaf = editorView?.leaf || this.lastEditorLeaf;
 
         // Install debug listeners ONCE per view instance for focus/mouse diagnostics
         if (!this.debugHooksInstalled) {
@@ -253,6 +255,21 @@ export class HierarchicalBacklinksView extends ItemView {
         // Always set the current note id first
         this.currentNoteId = noteId;
 
+        const ensureHeader = (locked: boolean): BacklinksLayout => {
+            if (!this.layout) {
+                this.layout = new BacklinksLayout(this.app);
+                this.layout.mountHeader(
+                    container as HTMLDivElement,
+                    this.buildNavCallbacks(locked),
+                    locked
+                );
+            } else {
+                this.layout.setCallbacks(this.buildNavCallbacks(locked));
+                this.layout.setLockActive(locked);
+            }
+            return this.layout as BacklinksLayout;
+        };
+
         // Prefer a locked snapshot from main (snapshot presence = locked)
         const snap = this.plugin.locks.get(noteId);
         if (snap) {
@@ -261,52 +278,28 @@ export class HierarchicalBacklinksView extends ItemView {
             this.viewState.isLocked = true;
             this.originalHierarchy = snap.hierarchy;
 
-            // Mount header once (or reuse) and render tree only
-            if (!this.layout) {
-                this.layout = new BacklinksLayout(this.app);
-                this.layout.mountHeader(
-                    container as HTMLDivElement,
-                    this.buildNavCallbacks(true),
-                    /* initialLocked */ true
-                );
-            } else {
-                // Reuse header; just ensure callbacks and visuals match locked state
-                this.layout.setCallbacks(this.buildNavCallbacks(true));
-                this.layout.setLockActive(true);
-            }
+            const layoutLocked = ensureHeader(true);
             // Render the snapshot tree only; header stays
             this.treeNodeViews = [];
-            this.treeNodeViews = this.layout.renderTree(this.originalHierarchy);
+            this.treeNodeViews = layoutLocked.renderTree(this.originalHierarchy);
         } else {
             Logger.debug(ENABLE_LOG_HB, '[HB] initialize(): UNLOCKED — globals => sortDescending =', this.sortDescending, ', isFlattened =', this.isFlattened);
             this.viewState = { nodeStates: new Map<string, NodeViewState>(), isLocked: false };
 
             const file = new File(this.app, activeFile);
-            const hierarchy = await file.getBacklinksHierarchy();
-            this.originalHierarchy = hierarchy;
+            this.originalHierarchy = await file.getBacklinksHierarchy();
 
             this.sortDescending = uiState.sortCollapsed ?? false;
             this.isFlattened = uiState.flattenCollapsed ?? false;
 
-            // Ensure header exists
-            if (!this.layout) {
-                this.layout = new BacklinksLayout(this.app);
-                this.layout.mountHeader(
-                    container as HTMLDivElement,
-                    this.buildNavCallbacks(false),
-                    /* initialLocked */ false
-                );
-            } else {
-                this.layout.setCallbacks(this.buildNavCallbacks(false));
-                this.layout.setLockActive(false);
-            }
-
+            const layoutUnlocked = ensureHeader(false);
             // Render tree based on flatten state
             this.treeNodeViews = [];
             const toRender = this.isFlattened
                 ? (this.flattenedHierarchy = buildFlattenedHierarchy(this.originalHierarchy))
                 : this.originalHierarchy;
-            this.treeNodeViews = this.layout.renderTree(toRender);
+            this.treeNodeViews = layoutUnlocked.renderTree(toRender);
+
             this.updateSortOrder(this.sortDescending);
             // Reapply global UI state (list/content/flatten/sort/search) to the freshly-rendered tree
             this.applyGlobalsFromUiState();
@@ -440,32 +433,27 @@ export class HierarchicalBacklinksView extends ItemView {
      *  For flatten/sort we’ll call the dedicated methods (which rebuild the tree only). */
     private applyListAndContentGlobalsInPlace() {
         if (this.isNoteLocked()) return; // don't touch locked trees
-        if (!this.treeNodeViews?.length) return;
+        const views = this.treeNodeViews;
+        if (!views?.length) return;
 
-        if (uiState.listCollapsed) {
-            this.treeNodeViews.forEach(v => v.listToggleOn());
-        } else {
-            this.treeNodeViews.forEach(v => v.listToggleOff());
+        const listCollapsed = !!uiState.listCollapsed;
+        const contentCollapsed = !!uiState.contentCollapsed;
+
+        for (const v of views) {
+            listCollapsed ? v.listToggleOn() : v.listToggleOff();
+            contentCollapsed ? v.contentHiddenToggleOn() : v.contentHiddenToggleOff();
+            v.applyNodeViewStateToUI();
         }
-
-        if (uiState.contentCollapsed) {
-            this.treeNodeViews.forEach(v => v.contentHiddenToggleOn());
-        } else {
-            this.treeNodeViews.forEach(v => v.contentHiddenToggleOff());
-        }
-
-        // Push states to DOM
-        for (const v of this.treeNodeViews) v.applyNodeViewStateToUI();
     }
 
     private applyGlobalsFromUiState() {
         // keep navbar in sync
-        this.syncNavbarFromGlobals?.();
+        this.syncNavbarFromGlobals();
 
         if (this.isNoteLocked()) return; // frozen tree: UI only
 
         // 1) list/content in place
-        this.applyListAndContentGlobalsInPlace?.();
+        this.applyListAndContentGlobalsInPlace();
 
         // 2) flatten (rebuild tree) if needed
         const wantFlatten = !!uiState.flattenCollapsed;
@@ -475,13 +463,13 @@ export class HierarchicalBacklinksView extends ItemView {
         }
 
         // 3) sort on current tree
-        this.layout?.setSortActive(!!uiState.sortCollapsed);
-        this.updateSortOrder(!!uiState.sortCollapsed);
+        const wantSort = !!uiState.sortCollapsed;
+        this.layout?.setSortActive(wantSort);
+        this.updateSortOrder(wantSort);
 
         // 4) reapply search if active
-        if ((uiState.query ?? "").length > 0) {
-            this.filterBacklinks(uiState.query);
-        }
+        const q = uiState.query ?? "";
+        if (q.length > 0) this.filterBacklinks(q);
     }
 
     /** Create a lock snapshot from the current render source and store it for the current note. */
