@@ -4,10 +4,12 @@ export type HistoryHotkeyOptions = {
     refocus: (force?: boolean) => void;
     register: (t: any, ev: string, h: any, opts?: any) => void; // view.registerDomEvent
     exec: (id: string) => void;                                  // app.commands.executeCommandById
+    enableEnterRefocus?: boolean;           // default true
+    searchInputClass?: string;              // default 'search-input'
   };
   
   export function installHistoryHotkeys(opts: HistoryHotkeyOptions): void {
-    const { containerEl, refocus, register, exec } = opts;
+    const { containerEl, refocus, register, exec, enableEnterRefocus = true, searchInputClass = 'search-input' } = opts;
   
     const isHistoryChord = (ev: KeyboardEvent) => {
       const k = ev.key;
@@ -36,4 +38,16 @@ export type HistoryHotkeyOptions = {
     };
   
     register(window, "keydown", handler, { capture: true } as any);
+
+    if (enableEnterRefocus) {
+      const onEnter = (ev: KeyboardEvent) => {
+        if (ev.key !== 'Enter') return;
+        const ae = document.activeElement as HTMLElement | null;
+        if (!ae || !ae.classList?.contains(searchInputClass)) return;
+        ev.stopPropagation();
+        ev.preventDefault();
+        refocus(true);
+      };
+      register(window, 'keydown', onEnter, { capture: true } as any);
+    }
   }

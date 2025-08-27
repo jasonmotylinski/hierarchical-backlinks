@@ -50,6 +50,7 @@ export class HierarchicalBacklinksView extends ItemView {
     private debugHooksInstalled: boolean = false;
     private lastEditorLeaf: WorkspaceLeaf | null = null;
     private historyHotkeysInstalled: boolean = false;
+    private searchEnterInstalled: boolean = false;
     constructor(leaf: WorkspaceLeaf, plugin: HierarchicalBacklinksPlugin) {
         super(leaf);
         this.plugin = plugin;
