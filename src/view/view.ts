@@ -65,53 +65,6 @@ export class HierarchicalBacklinksView extends ItemView {
         return "Hierarchical backlinks";
     }
 
-    /** Command-friendly lock toggle for the current note. */
-    public toggleLock() {
-        if (!this.currentNoteId) return;
-
-        const isLocked = !!this.plugin.locks.get(this.currentNoteId);
-        if (isLocked) {
-            // Unlock: drop snapshot
-            this.plugin.locks.delete(this.currentNoteId);
-        } else {
-            // Lock: capture and store snapshot
-            this.captureLockSnapshot();
-        }
-
-        // Remount so header + tree reflect new state
-        this.initialize?.();
-    }
-
-    public applyGlobalsFromUiState() {
-        // keep navbar in sync
-        this.syncNavbarFromGlobals?.();
-
-        if (this.isNoteLocked()) return; // frozen tree: UI only
-
-        // 1) list/content in place
-        this.applyListAndContentGlobalsInPlace?.();
-
-        // 2) flatten (rebuild tree) if needed
-        const wantFlatten = !!uiState.flattenCollapsed;
-        if (wantFlatten !== this.isFlattened) {
-            this.layout?.setFlattenActive(wantFlatten);
-            this.toggleFlatten(wantFlatten);
-        }
-
-        // 3) sort on current tree
-        this.layout?.setSortActive(!!uiState.sortCollapsed);
-        this.updateSortOrder(!!uiState.sortCollapsed);
-
-        // 4) reapply search if active
-        if ((uiState.query ?? "").length > 0) {
-            this.filterBacklinks(uiState.query);
-        }
-    }
-
-    public focusSearch() {
-        this.layout?.focusSearch?.();
-    }
-
     /** After a navbar action, keep editor history hotkeys working.
      *  If the search bar is visible, we leave focus there. */
     private refocusEditorIfNoSearch() {
@@ -260,7 +213,7 @@ export class HierarchicalBacklinksView extends ItemView {
         // Keep the original semantics you implemented for the search bar command
         if (show) {
             this.layout?.setSearchActive?.(true);
-            this.focusSearch();
+            this.layout?.focusSearch?.();
         } else {
             this.layout?.clearSearch?.(); // clears UI + uiState.query if your layout implements it
             this.layout?.setSearchActive?.(false);
@@ -358,42 +311,6 @@ export class HierarchicalBacklinksView extends ItemView {
             // Reapply global UI state (list/content/flatten/sort/search) to the freshly-rendered tree
             this.applyGlobalsFromUiState();
         }
-
-        // ⌨️ After remount: if search is not open, ensure the editor leaf stays active & focused.
-        // This keeps Cmd/Alt+←/→ working even after clicking navbar buttons.
-        try {
-            const ae = document.activeElement as HTMLElement | null;
-            const searchOpen = this.layout?.isSearchVisible?.() ?? false;
-
-            // If focus is on <body> or somewhere inside the HB pane (esp. header), hand it back to the editor
-            const inHB = !!ae?.closest?.(".workspace-leaf-content[data-type='hierarchical-backlinks']");
-            const lostFocus = !ae || ae.tagName === "BODY" || inHB;
-
-            if (!searchOpen && editorLeaf && lostFocus) {
-                // 1) Make sure the editor is the active leaf again (prevents workspace hotkeys from targeting HB)
-                this.app.workspace.setActiveLeaf(editorLeaf, false, false);
-                // 2) Ensure DOM focus is on CodeMirror
-                const edView = this.app.workspace.getActiveViewOfType(MarkdownView);
-                edView?.editor?.focus();
-            }
-
-            // Debug
-            const editorHasFocus = !!(document.activeElement as HTMLElement | null)?.closest?.(".cm-editor");
-            Logger.debug(ENABLE_LOG_HB,
-                "[HB] initialize() done — activeElement =",
-                (document.activeElement as HTMLElement | null)?.tagName,
-                (document.activeElement as HTMLElement | null)?.className,
-                "| editorHasFocus =",
-                editorHasFocus
-            );
-        } catch (_) { }
-
-        // view.ts — at the very end of initialize(), after createPane/updateSortOrder, etc.
-        try {
-            const ae = document.activeElement as HTMLElement | null;
-            const editorHasFocus = !!ae?.closest?.('.cm-editor');
-            Logger.debug(ENABLE_LOG_HB, '[HB] initialize() done — activeElement =', ae?.tagName, ae?.className, '| editorHasFocus =', editorHasFocus);
-        } catch (_) { }
 
         // Keep navbar in sync without remounting header
         this.syncNavbarFromGlobals();
@@ -539,6 +456,32 @@ export class HierarchicalBacklinksView extends ItemView {
 
         // Push states to DOM
         for (const v of this.treeNodeViews) v.applyNodeViewStateToUI();
+    }
+
+    private applyGlobalsFromUiState() {
+        // keep navbar in sync
+        this.syncNavbarFromGlobals?.();
+
+        if (this.isNoteLocked()) return; // frozen tree: UI only
+
+        // 1) list/content in place
+        this.applyListAndContentGlobalsInPlace?.();
+
+        // 2) flatten (rebuild tree) if needed
+        const wantFlatten = !!uiState.flattenCollapsed;
+        if (wantFlatten !== this.isFlattened) {
+            this.layout?.setFlattenActive(wantFlatten);
+            this.toggleFlatten(wantFlatten);
+        }
+
+        // 3) sort on current tree
+        this.layout?.setSortActive(!!uiState.sortCollapsed);
+        this.updateSortOrder(!!uiState.sortCollapsed);
+
+        // 4) reapply search if active
+        if ((uiState.query ?? "").length > 0) {
+            this.filterBacklinks(uiState.query);
+        }
     }
 
     /** Create a lock snapshot from the current render source and store it for the current note. */
