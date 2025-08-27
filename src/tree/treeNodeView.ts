@@ -61,6 +61,21 @@ export class TreeNodeView {
     appendEndNode(parent: HTMLDivElement, treeNode: TreeNode) {
         this.treeItemIcon = parent.createDiv({ cls: "tree-item-icon collapse-icon" });
 
+        this.treeItemIcon.setAttr("tabindex", "-1");
+        this.treeItemIcon.setAttr("aria-hidden", "true");
+
+        // Prevent focus steal: handle down events first
+        this.treeItemIcon.addEventListener(
+            "pointerdown",
+            (e) => { e.preventDefault(); e.stopPropagation(); },
+            { capture: true }
+        );
+        this.treeItemIcon.addEventListener(
+            "mousedown",
+            (e) => { e.preventDefault(); e.stopPropagation(); },
+            { capture: true }
+        );
+
         let name = treeNode.title;
         if (treeNode.children && treeNode.children.length == 0) {
             const firstLink = this.app.metadataCache.getFirstLinkpathDest(treeNode.title, '');
@@ -71,6 +86,13 @@ export class TreeNodeView {
         }
 
         const treeItemInner = parent.createDiv({ cls: "tree-item-inner", text: name });
+
+        treeItemInner.addEventListener(
+            "mousedown",
+            (e) => { e.stopPropagation(); },
+            { capture: true }
+        );
+
         setIcon(this.treeItemIcon, 'right-triangle');
 
         this.treeItemIcon.addEventListener("click", (e) => {
