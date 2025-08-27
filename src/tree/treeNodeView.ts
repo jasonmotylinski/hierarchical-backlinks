@@ -4,7 +4,7 @@ import { ContentReference, ViewState, NodeViewState, NodeId } from "../types";
 import { TreeNode } from "./treeNode";
 import { Logger } from "../utils/logger";
 import { uiState } from "../ui/uiState";
-import { getOrCreateNodeViewState } from "../view/viewState";
+import { getOrCreateNodeViewState } from "../view/state";
 
 const ENABLE_LOG_TOGGLE = false; // Set to true to enable toggle logging
 const ENABLE_LOG_CREATE = false; // Set to true to enable node creation logging
