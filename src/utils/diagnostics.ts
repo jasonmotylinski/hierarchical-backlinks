@@ -1,5 +1,13 @@
 import { Logger } from "../utils/logger";
 
+export function activeSummary(): string {
+    const el = document.activeElement as HTMLElement | null;
+    if (!el) return "null";
+    const id = el.id ? `#${el.id}` : "";
+    const cls = el.className ? `.${String(el.className).trim().replace(/\s+/g, ".")}` : "";
+    return `${el.tagName.toLowerCase()}${id}${cls}`;
+}
+
 /**
  * Installs one-time debug hooks on the HB view container.
  * We keep this separate to reduce noise in view.ts.
@@ -13,15 +21,22 @@ export function installDebugHooks(
     onHeaderInteraction: () => void,
     enableLog: boolean
 ): void {
-    // focus transitions inside the HB view
     containerEl.addEventListener("focusin", (e) => {
         const t = e.target as HTMLElement | null;
-        Logger.debug(enableLog, "[HB] focusin in HB view — target =", t?.tagName, t?.className);
-    });
+        Logger.debug(
+            enableLog,
+            "[HB] focusin in HB view — target =", t?.tagName, t?.className,
+            "| active=", activeSummary()
+        );
+    }, true);
     containerEl.addEventListener("focusout", (e) => {
         const t = e.target as HTMLElement | null;
-        Logger.debug(enableLog, "[HB] focusout in HB view — target =", t?.tagName, t?.className);
-    });
+        Logger.debug(
+            enableLog,
+            "[HB] focusout in HB view — target =", t?.tagName, t?.className,
+            "| active=", activeSummary()
+        );
+    }, true);
 
     // Mouse path diagnostics (capture phase) to see what bubbles up
     containerEl.addEventListener(

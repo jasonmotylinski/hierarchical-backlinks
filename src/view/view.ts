@@ -9,7 +9,7 @@ import { uiState } from "../ui/uiState";
 import { BacklinksLayout } from "../ui/layout";
 import { cloneHierarchy, deepSortHierarchy, buildFlattenedHierarchy } from "./treeUtils";
 import { applyFilter } from "./filter";
-import { installDebugHooks } from "../utils/diagnostics";
+import { installDebugHooks, activeSummary } from "../utils/diagnostics";
 import {
     ensureViewState,
     getOrCreateNodeViewState as getNodeState,
@@ -18,11 +18,13 @@ import {
     captureSnapshotFrom,
 } from "./state";
 import { registerViewEvents } from "./events";
+import { installHistoryHotkeys } from "./focusSupport";
 
+const ENABLE_LOG_DIAG = true; // Set to true to enable diagnostics
 const ENABLE_LOG_FILTER = true; // enable logging in filter-related methods
 const ENABLE_LOG_FILTER_VERBOSE = false; // Ultra-verbose per-node logging.
 const ENABLE_LOG_SORT = false; // Set to false to disable logging in sort-related methods
-const ENABLE_LOG_HB = false; // General logging for HB view methods
+const ENABLE_LOG_HB = true; // General logging for HB view methods
 
 export const VIEW_TYPE = "hierarchical-backlinks";
 
@@ -47,6 +49,7 @@ export class HierarchicalBacklinksView extends ItemView {
     private searchSeq: number = 0;
     private debugHooksInstalled: boolean = false;
     private lastEditorLeaf: WorkspaceLeaf | null = null;
+    private historyHotkeysInstalled: boolean = false;
     constructor(leaf: WorkspaceLeaf, plugin: HierarchicalBacklinksPlugin) {
         super(leaf);
         this.plugin = plugin;
@@ -66,9 +69,15 @@ export class HierarchicalBacklinksView extends ItemView {
 
     /** After a navbar action, keep editor history hotkeys working.
      *  If the search bar is visible, we leave focus there. */
-    private refocusEditorIfNoSearch() {
+    private refocusEditorIfNoSearch(force = false) {
+        // Guard: if focus is inside HB view (e.g., search input), only proceed when forced
+        const ae = document.activeElement as HTMLElement | null;
+        if (!force && ae && this.containerEl.contains(ae)) {
+            Logger.debug(ENABLE_LOG_HB, '[HB] refocusEditorIfNoSearch: skipped (focus inside HB)');
+            return;
+        }
         const searchOpen = this.layout?.isSearchVisible?.() ?? false;
-        if (searchOpen) return;
+        if (searchOpen && !force) return;
 
         // Prefer the last known Markdown editor leaf; fall back to current if available
         let leaf: WorkspaceLeaf | null = this.lastEditorLeaf
@@ -119,7 +128,7 @@ export class HierarchicalBacklinksView extends ItemView {
                 self.layout?.setContentActive(collapsed);
             },
             onSearchChange: (q: string) => {
-                setTimeout(() => self.refocusEditorIfNoSearch(), 0);
+                // setTimeout(() => self.refocusEditorIfNoSearch(), 0);
                 Logger.debug(ENABLE_LOG_HB, '[HB][view] cb:search', { q, locked: self.isNoteLocked(), nodes: self.treeNodeViews.length });
                 if (self.isNoteLocked()) return;
                 // Do NOT short-circuit on equality with uiState.query; layout updates it before calling us.
@@ -244,9 +253,17 @@ export class HierarchicalBacklinksView extends ItemView {
 
         // Install debug listeners ONCE per view instance for focus/mouse diagnostics
         if (!this.debugHooksInstalled) {
-            installDebugHooks(this.containerEl as HTMLElement, () => this.suppressInit(250), ENABLE_LOG_HB);
+            installDebugHooks(this.containerEl as HTMLElement, () => this.suppressInit(250), ENABLE_LOG_DIAG);
             this.debugHooksInstalled = true;
         }
+
+        // Keep forward/back hotkeys working even when HB has focus
+        installHistoryHotkeys({
+            containerEl: this.containerEl as HTMLElement,
+            refocus: this.refocusEditorIfNoSearch.bind(this),
+            register: this.registerDomEvent.bind(this),
+            exec: (id: string) => this.app.commands.executeCommandById(id),
+        });
 
         const activeFile = this.app.workspace.getActiveFile();
         if (!activeFile) return;
@@ -382,6 +399,8 @@ export class HierarchicalBacklinksView extends ItemView {
         uiState.query = trimmed;
         const sid = ++this.searchSeq;
 
+        Logger.debug(ENABLE_LOG_FILTER, "[filter] BEGIN q=", trimmed, " active=", activeSummary());
+
         applyFilter(
             {
                 roots: this.originalHierarchy,
@@ -395,6 +414,8 @@ export class HierarchicalBacklinksView extends ItemView {
                 enableVerbose: false,  // was ENABLE_LOG_FILTER_VERBOSE
             }
         );
+
+        Logger.debug(ENABLE_LOG_FILTER, "[filter] END   q=", trimmed, " active=", activeSummary());
     }
 
     private toggleFlatten(flattened: boolean) {
