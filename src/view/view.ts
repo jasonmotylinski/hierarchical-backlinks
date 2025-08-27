@@ -4,12 +4,21 @@ import HierarchicalBacklinksPlugin from "../main/main";
 import { TreeNode } from "../tree/treeNode";
 import { TreeNodeView } from "../tree/treeNodeView";
 import { ViewState, NodeViewState, LockedTreeSnapshot } from "../types";
-import { parseSearchQuery } from "../search/parse";
-import { makePredicate } from "../search/evaluate";
 import { Logger } from "../utils/logger";
 import { uiState } from "../ui/uiState";
 import { BacklinksLayout } from "../ui/layout";
 import { getOrCreateNodeViewState } from "./viewState";
+import { cloneHierarchy, deepSortHierarchy, buildFlattenedHierarchy } from "./treeUtils";
+import { applyFilter } from "./filter";
+import { installDebugHooks } from "../utils/diagnostics";
+import {
+    ensureViewState,
+    getOrCreateNodeViewState as getNodeState,
+    snapshotNodeStates,
+    restoreNodeStatesFrom,
+    captureSnapshotFrom,
+} from "./state";
+import { registerViewEvents } from "./events";
 
 const ENABLE_LOG_FILTER = true; // enable logging in filter-related methods
 const ENABLE_LOG_FILTER_VERBOSE = false; // Ultra-verbose per-node logging.
@@ -65,9 +74,8 @@ export class HierarchicalBacklinksView extends ItemView {
             // Unlock: drop snapshot
             this.plugin.locks.delete(this.currentNoteId);
         } else {
-            // Lock: capture snapshot
-            const snap = this.captureSnapshot?.();
-            if (snap) this.plugin.locks.set(this.currentNoteId, snap);
+            // Lock: capture and store snapshot
+            this.captureLockSnapshot();
         }
 
         // Remount so header + tree reflect new state
@@ -192,8 +200,8 @@ export class HierarchicalBacklinksView extends ItemView {
                 Logger.debug(ENABLE_LOG_HB, '[HB][view] cb:lock', { locked, hasNote: !!self.currentNoteId, nodes: self.treeNodeViews.length });
                 if (!self.currentNoteId || !self.viewState) return;
                 if (locked) {
-                    const s = self.captureSnapshot();
-                    self.plugin.locks.set(self.currentNoteId, s);
+                    // Build snapshot from the currently rendered data source
+                    self.captureLockSnapshot();
                     self.layout?.setLockActive(true);
                 } else {
                     // Fully release the snapshot and rebuild from globals
@@ -281,39 +289,7 @@ export class HierarchicalBacklinksView extends ItemView {
 
         // Install debug listeners ONCE per view instance for focus/mouse diagnostics
         if (!this.debugHooksInstalled) {
-            // Log focus transitions inside the HB view
-            this.containerEl.addEventListener('focusin', (e) => {
-                const t = e.target as HTMLElement | null;
-                console.log('[HB] focusin in HB view — target =', t?.tagName, t?.className);
-            });
-            this.containerEl.addEventListener('focusout', (e) => {
-                const t = e.target as HTMLElement | null;
-                Logger.debug(ENABLE_LOG_HB, '[HB] focusout in HB view — target =', t?.tagName, t?.className);
-            });
-
-            // Mouse path diagnostics (capture phase) to see what bubbles up
-            this.containerEl.addEventListener('pointerdown', (e) => {
-                const header = this.containerEl.querySelector(".nav-header") as HTMLElement | null;
-                if (header && header.contains(e.target as Node)) this.suppressInit(250);
-
-                const t = e.target as HTMLElement | null;
-                Logger.debug(ENABLE_LOG_HB, '[HB] pointerdown in HB view (capture) — target =', t?.tagName, t?.className);
-            }, true);
-            this.containerEl.addEventListener('mousedown', (e) => {
-                const header = this.containerEl.querySelector(".nav-header") as HTMLElement | null;
-                if (header && header.contains(e.target as Node)) this.suppressInit(250);
-
-                const t = e.target as HTMLElement | null;
-                Logger.debug(ENABLE_LOG_HB, '[HB] mousedown in HB view (capture) — target =', t?.tagName, t?.className);
-            }, true);
-            this.containerEl.addEventListener('click', (e) => {
-                const header = this.containerEl.querySelector(".nav-header") as HTMLElement | null;
-                if (header && header.contains(e.target as Node)) this.suppressInit(250);
-
-                const t = e.target as HTMLElement | null;
-                Logger.debug(ENABLE_LOG_HB, '[HB] click in HB view (capture) — target =', t?.tagName, t?.className);
-            }, true);
-
+            installDebugHooks(this.containerEl as HTMLElement, () => this.suppressInit(250), ENABLE_LOG_HB);
             this.debugHooksInstalled = true;
         }
 
@@ -350,7 +326,6 @@ export class HierarchicalBacklinksView extends ItemView {
             this.treeNodeViews = this.layout.renderTree(this.originalHierarchy);
         } else {
             Logger.debug(ENABLE_LOG_HB, '[HB] initialize(): UNLOCKED — globals => sortDescending =', this.sortDescending, ', isFlattened =', this.isFlattened);
-
             this.viewState = { nodeStates: new Map<string, NodeViewState>(), isLocked: false };
 
             const file = new File(this.app, activeFile);
@@ -376,7 +351,7 @@ export class HierarchicalBacklinksView extends ItemView {
             // Render tree based on flatten state
             this.treeNodeViews = [];
             const toRender = this.isFlattened
-                ? (this.flattenedHierarchy = this.buildFlattenedHierarchy(this.originalHierarchy))
+                ? (this.flattenedHierarchy = buildFlattenedHierarchy(this.originalHierarchy))
                 : this.originalHierarchy;
             this.treeNodeViews = this.layout.renderTree(toRender);
             this.updateSortOrder(this.sortDescending);
@@ -424,45 +399,8 @@ export class HierarchicalBacklinksView extends ItemView {
         this.syncNavbarFromGlobals();
     }
 
-    private register_events() {
-        this.plugin.registerEvent(this.app.metadataCache.on("changed", (file) => {
-            if (this.shouldSuppressInit()) {
-                Logger.debug(ENABLE_LOG_HB, "[HB] initialize() suppressed: cause=metadataCache.changed", file?.path);
-                return;
-            }
-            Logger.debug(ENABLE_LOG_HB, "[HB] initialize cause = metadataCache.changed", file?.path);
-            this.initialize();
-        }));
-
-        // Keep layout-change commented out
-        // this.plugin.registerEvent(this.app.workspace.on("layout-change", () => { ... }));
-
-        this.plugin.registerEvent(this.app.workspace.on("file-open", (file) => {
-            if (this.shouldSuppressInit()) {
-                Logger.debug(ENABLE_LOG_HB, "[HB] initialize() suppressed: cause=workspace.file-open", file?.path);
-                return;
-            }
-            // Track the last editor leaf so we can restore focus after navbar clicks
-            const activeEditor = this.app.workspace.getActiveViewOfType(MarkdownView);
-            if (activeEditor?.leaf) this.lastEditorLeaf = activeEditor.leaf;
-
-            Logger.debug(ENABLE_LOG_HB, "[HB] initialize cause = workspace.file-open", file?.path);
-            this.initialize();
-        }));
-
-        // Also track active leaf changes to keep lastEditorLeaf up to date
-        this.plugin.registerEvent(this.app.workspace.on("active-leaf-change", (leaf) => {
-            const v = leaf?.view;
-            // @ts-ignore: runtime check
-            if (v && v instanceof MarkdownView) {
-                this.lastEditorLeaf = leaf!;
-                // Logger.debug(ENABLE_LOG_HB,'[HB] lastEditorLeaf updated via active-leaf-change');
-            }
-        }));
-    }
-
     async onOpen() {
-        this.register_events();
+        registerViewEvents(this, { enableLogHB: ENABLE_LOG_HB });
         return this.initialize();
     }
 
@@ -473,7 +411,7 @@ export class HierarchicalBacklinksView extends ItemView {
 
         // If we’re in the special sort-restore path
         if (this.isSortRestore && this.sortSnapshot) {
-            this.restoreNodeStatesFrom(this.sortSnapshot);
+            restoreNodeStatesFrom(this.viewState!, this.sortSnapshot);
             for (const v of this.treeNodeViews) v.applyNodeViewStateToUI();
             this.isSortRestore = false;
             this.sortSnapshot = undefined;
@@ -491,44 +429,6 @@ export class HierarchicalBacklinksView extends ItemView {
         for (const v of this.treeNodeViews) v.applyNodeViewStateToUI();
     }
 
-    private snapshotNodeStates(): Map<string, { isCollapsed: boolean; isVisible: boolean }> {
-        const snap = new Map<string, { isCollapsed: boolean; isVisible: boolean }>();
-        for (const [path, st] of this.viewState!.nodeStates.entries()) {
-            snap.set(path, { isCollapsed: !!st.isCollapsed, isVisible: st.isVisible !== false });
-        }
-        return snap;
-    }
-
-    private restoreNodeStatesFrom(snapshot: Map<string, { isCollapsed: boolean; isVisible: boolean }>): void {
-        for (const [path, st] of snapshot.entries()) {
-            this.viewState!.nodeStates.set(path, { isCollapsed: st.isCollapsed, isVisible: st.isVisible });
-        }
-    }
-
-    /** Deep clone the hierarchy so we can sort without mutating originals */
-    private cloneHierarchy(nodes: TreeNode[]): TreeNode[] {
-        return nodes.map((n) => ({
-            ...n,
-            // recursively clone children
-            children: this.cloneHierarchy(n.children || []),
-            setFrontmatter: n.setFrontmatter, // Include the required method
-        }));
-    }
-
-    /** Recursively sort nodes by the leaf name of their path (A→Z or Z→A). */
-    private deepSortHierarchy(models: TreeNode[], descending: boolean): void {
-        const nameOf = (n: TreeNode) => (n.path?.split("/").pop() ?? "").toLowerCase();
-        const cmp = (a: TreeNode, b: TreeNode) =>
-            descending ? nameOf(b).localeCompare(nameOf(a)) : nameOf(a).localeCompare(nameOf(b));
-
-        models.sort(cmp);
-        for (const m of models) {
-            if (Array.isArray(m.children) && m.children.length > 0) {
-                this.deepSortHierarchy(m.children, descending);
-            }
-        }
-    }
-
     private updateSortOrder(descending: boolean) {
         Logger.debug(ENABLE_LOG_SORT, `[updateSortOrder] Current=${this.sortDescending}, New=${descending}`);
         this.sortDescending = descending;
@@ -541,7 +441,7 @@ export class HierarchicalBacklinksView extends ItemView {
 
         if (this.isFlattened) {
             // Rebuild flattened list, sort (shallow), and remount
-            const leaves = this.buildFlattenedHierarchy(this.originalHierarchy);
+            const leaves = buildFlattenedHierarchy(this.originalHierarchy);
             const nameOf = (n: TreeNode) => (n.path?.split("/").pop() ?? "").toLowerCase();
             leaves.sort((a, b) =>
                 descending ? nameOf(b).localeCompare(nameOf(a)) : nameOf(a).localeCompare(nameOf(b))
@@ -550,181 +450,41 @@ export class HierarchicalBacklinksView extends ItemView {
             Logger.debug(ENABLE_LOG_SORT, "[updateSortOrder] AFTER remount; collected views:", this.treeNodeViews.length);
         } else {
             // Take snapshot for sort restore
-            this.sortSnapshot = this.snapshotNodeStates();
+            this.sortSnapshot = snapshotNodeStates(this.viewState!);
             this.isSortRestore = true;
 
             // Deep sort a cloned hierarchy so we don't mutate the original
-            const cloned = this.cloneHierarchy(this.originalHierarchy);
-            this.deepSortHierarchy(cloned, descending);
+            const cloned = cloneHierarchy(this.originalHierarchy);
+            deepSortHierarchy(cloned, descending);
             this.createPane(container, cloned);
             Logger.debug(ENABLE_LOG_SORT, "[updateSortOrder] AFTER remount; collected views:", this.treeNodeViews.length);
         }
     }
 
+    // If you keep this helper, route it to the shared impl:
     private getOrCreateNodeViewState(nodeId: string): NodeViewState {
-        if (!this.viewState) {
-            this.viewState = { nodeStates: new Map<string, NodeViewState>(), isLocked: false };
-        }
-        return getOrCreateNodeViewState(this.viewState, nodeId);
-    }
-
-    private resetVisibilityForTree(node: TreeNode): void {
-        const s = this.getOrCreateNodeViewState(node.path);
-        s.isVisible = true;
-        for (const child of node.children) {
-            this.resetVisibilityForTree(child);
-        }
-    }
-
-    private markVisibilityForTree(
-        node: TreeNode,
-        pred: (n: TreeNode) => boolean,
-        sid?: number
-    ): boolean {
-        const isMatch = node.isLeaf && pred(node);
-
-        const predRaw = pred(node);            // does the predicate think this node matches?
-        const leafGate = node.isLeaf;          // is the node a leaf?
-        const finMatch = leafGate && predRaw;   // your current behavior
-
-        Logger.debug(ENABLE_LOG_FILTER_VERBOSE,
-            `[testTerm:diag] node="${node.path}" leaf=${leafGate} predRaw=${predRaw} finalMatch=${finMatch}`);
-
-        // before:
-        // const childrenMatch = node.children.some(child =>
-        //   this.markVisibilityForTree(child, pred, sid)
-        // );
-
-        let childrenMatch = false;
-        for (let i = 0; i < node.children.length; i++) {
-            const child = node.children[i];
-            const childVisible = this.markVisibilityForTree(child, pred, sid);
-
-            Logger.debug(
-                ENABLE_LOG_FILTER_VERBOSE,
-                `[children-visit${sid ? ":" + sid : ""}] parent="${node.path}" idx=${i}/${node.children.length - 1} child="${child.path}" -> visible=${childVisible}`
-            );
-
-            // Aggregate visibility across ALL children; do not short-circuit so
-            // every child's visibility state gets updated during this pass.
-            childrenMatch = childrenMatch || childVisible;
-        }
-
-        const state = this.getOrCreateNodeViewState(node.path);
-        const prevVisible = state.isVisible !== false; // default true if undefined
-        const nextVisible = isMatch || childrenMatch;
-        state.isVisible = nextVisible;
-
-        Logger.debug(
-            ENABLE_LOG_FILTER_VERBOSE,
-            `[filterTree${sid ? ":" + sid : ""}] node="${node.path}", isLeaf=${node.isLeaf}, isMatch=${isMatch}, childrenMatches=${childrenMatch}, visible ${prevVisible} -> ${nextVisible}`
-        );
-
-        return state.isVisible;
-    }
-
-    private takeVisibilitySnapshot(nodes: TreeNode[]): Map<string, boolean> {
-        const snap = new Map<string, boolean>();
-        const walk = (n: TreeNode) => {
-            const st = this.getOrCreateNodeViewState(n.path);
-            const vis = st.isVisible !== false; // default true
-            snap.set(n.path, vis);
-            for (const c of n.children) walk(c);
-        };
-        for (const r of nodes) walk(r);
-        return snap;
-    }
-
-    private summarizeVisibility(nodes: TreeNode[]): { total: number; visible: number; visibleLeaves: number; visibleFolders: number } {
-        let total = 0, visible = 0, visibleLeaves = 0, visibleFolders = 0;
-        const walk = (n: TreeNode) => {
-            total++;
-            const st = this.getOrCreateNodeViewState(n.path);
-            const vis = st.isVisible !== false; // default true
-            if (vis) {
-                visible++;
-                if (n.isLeaf) visibleLeaves++; else visibleFolders++;
-            }
-            for (const c of n.children) walk(c);
-        };
-        for (const r of nodes) walk(r);
-        return { total, visible, visibleLeaves, visibleFolders };
+        this.viewState = ensureViewState(this.viewState);
+        return getNodeState(this.viewState, nodeId);
     }
 
     private filterBacklinks(query: string) {
-
-        const trimmed = query.trim().toLowerCase();
+        const trimmed = (query ?? "").trim().toLowerCase();
+        uiState.query = trimmed;
         const sid = ++this.searchSeq;
 
-        Logger.debug(ENABLE_LOG_FILTER, `[filterBacklinks:${sid}] ROOTS=${this.originalHierarchy.length} flattened=${this.isFlattened}`);
-        const allPaths: string[] = [];
-        const collect = (n: TreeNode) => { allPaths.push(n.path); n.children.forEach(collect); };
-        this.originalHierarchy.forEach(collect);
-        Logger.debug(ENABLE_LOG_FILTER_VERBOSE, `[filterBacklinks:${sid}] VISITABLE nodes=${allPaths.length} sample[0..10]=`, allPaths.slice(0, 10));
-
-        uiState.query = trimmed;
-
-        Logger.debug(ENABLE_LOG_FILTER, `[filterBacklinks:${sid}] BEGIN query="${trimmed}"`);
-
-        // Snapshot visibility before filtering
-        const before = this.takeVisibilitySnapshot(this.originalHierarchy);
-
-        // Build search predicate (bare terms target content by default)
-        const { clauses } = parseSearchQuery(trimmed, "default");
-        const pred = makePredicate(clauses, { defaultKey: "default" });
-
-        if (trimmed.length === 0) {
-            for (const node of this.originalHierarchy) {
-                this.resetVisibilityForTree(node);
+        applyFilter(
+            {
+                roots: this.originalHierarchy,
+                treeNodeViews: this.treeNodeViews,
+                getOrCreateNodeViewState: (id: string) => this.getOrCreateNodeViewState(id),
+            },
+            trimmed,
+            sid,
+            {
+                enableLog: true,       // was ENABLE_LOG_FILTER
+                enableVerbose: false,  // was ENABLE_LOG_FILTER_VERBOSE
             }
-        } else {
-            for (const node of this.originalHierarchy) {
-                this.markVisibilityForTree(node, pred, sid);
-            }
-        }
-
-        // Snapshot visibility after filtering and compute diff
-        const after = this.takeVisibilitySnapshot(this.originalHierarchy);
-        let changed = 0;
-        for (const [path, prev] of before.entries()) {
-            const curr = after.get(path);
-            if (curr !== prev) changed++;
-        }
-
-        const summary = this.summarizeVisibility(this.originalHierarchy);
-        Logger.debug(
-            ENABLE_LOG_FILTER,
-            `[filterBacklinks:${sid}] END query="${trimmed}" | changed=${changed} | total=${summary.total}, visible=${summary.visible} (leaves=${summary.visibleLeaves}, folders=${summary.visibleFolders})`
         );
-
-        // Update visibility of treeNodeViews in-place (roots only; method recurses into children)
-        for (const v of this.treeNodeViews) {
-            v.applyNodeViewStateToUI();
-        }
-    }
-
-    /**
-     * Build a flat list of leaf nodes from a hierarchical tree.
-     * Preserves node identity (path) so viewState (isVisible/isCollapsed) continues to apply.
-     */
-    private buildFlattenedHierarchy(hierarchy: TreeNode[]): TreeNode[] {
-        const leaves: TreeNode[] = [];
-
-        const walk = (node: TreeNode) => {
-            if (node.isLeaf) {
-                // clone the node but drop children to ensure it's rendered as a root leaf
-                leaves.push({
-                    ...node,
-                    children: [],
-                    setFrontmatter: node.setFrontmatter, // Include the required method
-                });
-                return;
-            }
-            for (const c of node.children) walk(c);
-        };
-
-        for (const root of hierarchy) walk(root);
-        return leaves;
     }
 
     private toggleFlatten(flattened: boolean) {
@@ -732,7 +492,7 @@ export class HierarchicalBacklinksView extends ItemView {
         const container = this.containerEl.children[1] as HTMLElement; // .view-content
 
         if (this.isFlattened) {
-            this.flattenedHierarchy = this.buildFlattenedHierarchy(this.originalHierarchy);
+            this.flattenedHierarchy = buildFlattenedHierarchy(this.originalHierarchy);
             this.createPane(container, this.flattenedHierarchy);
         } else {
             this.createPane(container, this.originalHierarchy);
@@ -741,23 +501,6 @@ export class HierarchicalBacklinksView extends ItemView {
         // After remount, re-apply collapsed/visibility states (handled by createPane)
         // Ensure current sort order is respected without remounting again
         this.updateSortOrder(this.sortDescending);
-    }
-
-    private cloneViewState(): ViewState {
-        const map = new Map<string, NodeViewState>();
-        for (const [k, v] of this.viewState!.nodeStates.entries()) {
-            map.set(k, { isCollapsed: !!v.isCollapsed, isVisible: v.isVisible });
-        }
-        return { nodeStates: map, isLocked: true };
-    }
-
-    private captureSnapshot(): LockedTreeSnapshot {
-        const source = this.isFlattened ? this.flattenedHierarchy : this.originalHierarchy;
-        const frozenHierarchy = this.cloneHierarchy(source);
-        return {
-            hierarchy: frozenHierarchy,
-            viewState: this.cloneViewState(),
-        };
     }
 
     private isNoteLocked(): boolean {
@@ -796,6 +539,22 @@ export class HierarchicalBacklinksView extends ItemView {
 
         // Push states to DOM
         for (const v of this.treeNodeViews) v.applyNodeViewStateToUI();
+    }
+
+    /** Create a lock snapshot from the current render source and store it for the current note. */
+    private captureLockSnapshot(): LockedTreeSnapshot | null {
+        if (!this.currentNoteId) return null;
+
+        const source = this.isFlattened ? this.flattenedHierarchy : this.originalHierarchy;
+        // Ensure we have a viewState to capture from
+        this.viewState = ensureViewState(this.viewState);
+
+        const snap = captureSnapshotFrom(source, this.viewState!);
+        this.plugin.locks.set(this.currentNoteId, snap);
+        // mark logically locked
+        if (this.viewState) this.viewState.isLocked = true;
+
+        return snap;
     }
 
 }
