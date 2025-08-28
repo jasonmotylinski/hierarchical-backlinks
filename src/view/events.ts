@@ -10,11 +10,9 @@ export function registerViewEvents(
   view: HierarchicalBacklinksView
 ) {
   const app = view.app;
-  // Access plugin off the instance (kept private in the class)
-  const plugin = (view as any).plugin as { registerEvent: Function };
 
   // metadataCache.changed -> initialize (unless suppressed)
-  plugin.registerEvent(
+  view.registerEvent(
     app.metadataCache.on("changed", (file) => {
       const shouldSuppress = (view as any).shouldSuppressInit?.call(view);
       if (shouldSuppress) {
@@ -27,7 +25,7 @@ export function registerViewEvents(
   );
 
   // workspace.file-open -> remember editor leaf and initialize (unless suppressed)
-  plugin.registerEvent(
+  view.registerEvent(
     app.workspace.on("file-open", (file) => {
       const shouldSuppress = (view as any).shouldSuppressInit?.call(view);
       if (shouldSuppress) {
@@ -44,7 +42,7 @@ export function registerViewEvents(
   );
 
   // Keep lastEditorLeaf fresh on active-leaf-change
-  plugin.registerEvent(
+  view.registerEvent(
     app.workspace.on("active-leaf-change", (leaf) => {
       const v = leaf?.view;
       // @ts-ignore runtime type check
