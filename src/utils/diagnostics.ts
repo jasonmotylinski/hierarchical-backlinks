@@ -1,4 +1,4 @@
-import { Logger } from "../utils/logger";
+import { dbgDiag } from "../utils/debug";
 
 export function activeSummary(): string {
     const el = document.activeElement as HTMLElement | null;
@@ -14,28 +14,18 @@ export function activeSummary(): string {
  *
  * @param containerEl   the ItemView.containerEl of the HB view
  * @param onHeaderInteraction  callback to suppress initialize() bursts when navbar/header is clicked
- * @param enableLog     feature flag used by Logger.debug to gate logs
  */
 export function installDebugHooks(
     containerEl: HTMLElement,
     onHeaderInteraction: () => void,
-    enableLog: boolean
 ): void {
     containerEl.addEventListener("focusin", (e) => {
         const t = e.target as HTMLElement | null;
-        Logger.debug(
-            enableLog,
-            "[HB] focusin in HB view — target =", t?.tagName, t?.className,
-            "| active=", activeSummary()
-        );
+        dbgDiag("focusin in HB view — target =", t?.tagName, t?.className, "| active=", activeSummary());
     }, true);
     containerEl.addEventListener("focusout", (e) => {
         const t = e.target as HTMLElement | null;
-        Logger.debug(
-            enableLog,
-            "[HB] focusout in HB view — target =", t?.tagName, t?.className,
-            "| active=", activeSummary()
-        );
+        dbgDiag("focusout in HB view — target =", t?.tagName, t?.className, "| active=", activeSummary());
     }, true);
 
     // Mouse path diagnostics (capture phase) to see what bubbles up
@@ -45,7 +35,7 @@ export function installDebugHooks(
             const header = containerEl.querySelector(".nav-header") as HTMLElement | null;
             if (header && header.contains(e.target as Node)) onHeaderInteraction();
             const t = e.target as HTMLElement | null;
-            Logger.debug(enableLog, "[HB] pointerdown in HB view (capture) — target =", t?.tagName, t?.className);
+            dbgDiag("pointerdown in HB view (capture) — target =", t?.tagName, t?.className);
         },
         true
     );
@@ -55,7 +45,7 @@ export function installDebugHooks(
             const header = containerEl.querySelector(".nav-header") as HTMLElement | null;
             if (header && header.contains(e.target as Node)) onHeaderInteraction();
             const t = e.target as HTMLElement | null;
-            Logger.debug(enableLog, "[HB] mousedown in HB view (capture) — target =", t?.tagName, t?.className);
+            dbgDiag("mousedown in HB view (capture) — target =", t?.tagName, t?.className);
         },
         true
     );
@@ -65,7 +55,7 @@ export function installDebugHooks(
             const header = containerEl.querySelector(".nav-header") as HTMLElement | null;
             if (header && header.contains(e.target as Node)) onHeaderInteraction();
             const t = e.target as HTMLElement | null;
-            Logger.debug(enableLog, "[HB] click in HB view (capture) — target =", t?.tagName, t?.className);
+            dbgDiag("click in HB view (capture) — target =", t?.tagName, t?.className);
         },
         true
     );

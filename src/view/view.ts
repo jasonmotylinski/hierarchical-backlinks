@@ -1,10 +1,10 @@
+import { dbgHB, dbgHBTrace, dbgFilter, dbgSort } from "../utils/debug";
 import { ItemView, WorkspaceLeaf, MarkdownView } from "obsidian";
 import { File } from "../data/file";
 import HierarchicalBacklinksPlugin from "../main/main";
 import { TreeNode } from "../tree/treeNode";
 import { TreeNodeView } from "../tree/treeNodeView";
 import { ViewState, NodeViewState, LockedTreeSnapshot } from "../types";
-import { Logger } from "../utils/logger";
 import { uiState } from "../ui/uiState";
 import { BacklinksLayout } from "../ui/layout";
 import { cloneHierarchy, deepSortHierarchy, buildFlattenedHierarchy } from "./treeUtils";
@@ -20,14 +20,7 @@ import {
 import { registerViewEvents } from "./events";
 import { installHistoryHotkeys } from "./focusSupport";
 
-const ENABLE_LOG_DIAG = true; // Set to true to enable diagnostics
-const ENABLE_LOG_FILTER = true; // enable logging in filter-related methods
-const ENABLE_LOG_FILTER_VERBOSE = false; // Ultra-verbose per-node logging.
-const ENABLE_LOG_SORT = false; // Set to false to disable logging in sort-related methods
-const ENABLE_LOG_HB = true; // General logging for HB view methods
-
 export const VIEW_TYPE = "hierarchical-backlinks";
-
 
 export class HierarchicalBacklinksView extends ItemView {
     // ---- diagnostics: suppress bursty initialize() calls tied to header clicks ----
@@ -49,8 +42,6 @@ export class HierarchicalBacklinksView extends ItemView {
     private searchSeq: number = 0;
     private debugHooksInstalled: boolean = false;
     private lastEditorLeaf: WorkspaceLeaf | null = null;
-    private historyHotkeysInstalled: boolean = false;
-    private searchEnterInstalled: boolean = false;
     constructor(leaf: WorkspaceLeaf, plugin: HierarchicalBacklinksPlugin) {
         super(leaf);
         this.plugin = plugin;
@@ -74,7 +65,7 @@ export class HierarchicalBacklinksView extends ItemView {
         // Guard: if focus is inside HB view (e.g., search input), only proceed when forced
         const ae = document.activeElement as HTMLElement | null;
         if (!force && ae && this.containerEl.contains(ae)) {
-            Logger.debug(ENABLE_LOG_HB, '[HB] refocusEditorIfNoSearch: skipped (focus inside HB)');
+            dbgHB('refocusEditorIfNoSearch: skipped (focus inside HB)');
             return;
         }
         const searchOpen = this.layout?.isSearchVisible?.() ?? false;
@@ -85,7 +76,7 @@ export class HierarchicalBacklinksView extends ItemView {
             ?? this.app.workspace.getActiveViewOfType(MarkdownView)?.leaf
             ?? null;
         if (!leaf) {
-            Logger.debug(ENABLE_LOG_HB, '[HB] refocusEditorIfNoSearch: no editor leaf to focus');
+            dbgHB('refocusEditorIfNoSearch: no editor leaf to focus');
             return;
         }
         this.app.workspace.setActiveLeaf(leaf, false, false);
@@ -107,7 +98,7 @@ export class HierarchicalBacklinksView extends ItemView {
             },
             onListToggle: (collapsed: boolean) => {
                 setTimeout(() => self.refocusEditorIfNoSearch(), 0);
-                Logger.debug(ENABLE_LOG_HB, '[HB][view] cb:list', { collapsed, locked: self.isNoteLocked(), nodes: self.treeNodeViews.length });
+                dbgHB('cb:list', { collapsed, locked: self.isNoteLocked(), nodes: self.treeNodeViews.length });
                 if (self.isNoteLocked()) {
                     // revert UI to global state when locked
                     self.layout?.setListActive(!!uiState.listCollapsed);
@@ -119,7 +110,7 @@ export class HierarchicalBacklinksView extends ItemView {
             },
             onContentToggle: (collapsed: boolean) => {
                 setTimeout(() => self.refocusEditorIfNoSearch(), 0);
-                Logger.debug(ENABLE_LOG_HB, '[HB][view] cb:content', { collapsed, locked: self.isNoteLocked(), nodes: self.treeNodeViews.length });
+                dbgHB('cb:content', { collapsed, locked: self.isNoteLocked(), nodes: self.treeNodeViews.length });
                 if (self.isNoteLocked()) {
                     self.layout?.setContentActive(!!uiState.contentCollapsed);
                     return;
@@ -130,14 +121,14 @@ export class HierarchicalBacklinksView extends ItemView {
             },
             onSearchChange: (q: string) => {
                 // setTimeout(() => self.refocusEditorIfNoSearch(), 0);
-                Logger.debug(ENABLE_LOG_HB, '[HB][view] cb:search', { q, locked: self.isNoteLocked(), nodes: self.treeNodeViews.length });
+                dbgHB('cb:filter', { q, locked: self.isNoteLocked(), nodes: self.treeNodeViews.length });
                 if (self.isNoteLocked()) return;
                 // Do NOT short-circuit on equality with uiState.query; layout updates it before calling us.
                 self.filterBacklinks(q ?? '');
             },
             onSortToggle: (descending: boolean) => {
                 setTimeout(() => self.refocusEditorIfNoSearch(), 0);
-                Logger.debug(ENABLE_LOG_HB, '[HB][view] cb:sort', { descending, locked: self.isNoteLocked(), nodes: self.treeNodeViews.length });
+                dbgHB('cb:sort', { descending, locked: self.isNoteLocked(), nodes: self.treeNodeViews.length });
                 if (self.isNoteLocked()) {
                     self.layout?.setSortActive(!!uiState.sortCollapsed);
                     return;
@@ -148,7 +139,7 @@ export class HierarchicalBacklinksView extends ItemView {
             },
             onFlattenToggle: (flattened: boolean) => {
                 setTimeout(() => self.refocusEditorIfNoSearch(), 0);
-                Logger.debug(ENABLE_LOG_HB, '[HB][view] cb:flatten', { flattened, locked: self.isNoteLocked(), nodes: self.treeNodeViews.length });
+                dbgHB('cb:flatten', { flattened, locked: self.isNoteLocked(), nodes: self.treeNodeViews.length });
                 if (self.isNoteLocked()) {
                     self.layout?.setFlattenActive(!!uiState.flattenCollapsed);
                     return;
@@ -159,7 +150,7 @@ export class HierarchicalBacklinksView extends ItemView {
             },
             onLockToggle: (locked: boolean) => {
                 setTimeout(() => self.refocusEditorIfNoSearch(), 0);
-                Logger.debug(ENABLE_LOG_HB, '[HB][view] cb:lock', { locked, hasNote: !!self.currentNoteId, nodes: self.treeNodeViews.length });
+                dbgHB('cb:lock', { locked, hasNote: !!self.currentNoteId, nodes: self.treeNodeViews.length });
                 if (!self.currentNoteId || !self.viewState) return;
                 if (locked) {
                     // Build snapshot from the currently rendered data source
@@ -171,7 +162,7 @@ export class HierarchicalBacklinksView extends ItemView {
                     if (noteId) {
                         const had = self.plugin.locks.has(noteId);
                         self.plugin.locks.delete(noteId);
-                        Logger.debug(ENABLE_LOG_HB, '[HB][lock] unlock: release', noteId, 'had=', had, 'nowHas=', self.plugin.locks.has(noteId));
+                        dbgHB('cb:unlock release', noteId, 'had=', had, 'nowHas=', self.plugin.locks.has(noteId));
                     }
                     if (self.viewState) self.viewState.isLocked = false;
                     // Drop any cached flattened variant derived from the snapshot
@@ -232,19 +223,13 @@ export class HierarchicalBacklinksView extends ItemView {
     }
 
     async initialize() {
-        if (ENABLE_LOG_HB) {
-            console.group("[HB] initialize(): TRACE");
-            console.trace();
-            console.groupEnd();
-        }
+        dbgHBTrace('initialize(): TRACE');
 
-        Logger.debug(ENABLE_LOG_SORT, "[initialize] start");
+        dbgHB('initialize(): start');
 
-        if (ENABLE_LOG_HB) {
-            const ae0 = document.activeElement as HTMLElement | null;
-            const editorHadFocus0 = !!ae0?.closest?.('.cm-editor');
-            Logger.debug(ENABLE_LOG_HB, '[HB] initialize(): start; activeElement =', ae0?.tagName, ae0?.className, '| editorHadFocus =', editorHadFocus0);
-        }
+        const ae0 = document.activeElement as HTMLElement | null;
+        const editorHadFocus0 = !!ae0?.closest?.('.cm-editor');
+        dbgHB('initialize(): start; activeElement =', ae0?.tagName, ae0?.className, '| editorHadFocus =', editorHadFocus0);
 
         const container = this.containerEl.children[1] as HTMLElement; // .view-content
 
@@ -254,7 +239,7 @@ export class HierarchicalBacklinksView extends ItemView {
 
         // Install debug listeners ONCE per view instance for focus/mouse diagnostics
         if (!this.debugHooksInstalled) {
-            installDebugHooks(this.containerEl as HTMLElement, () => this.suppressInit(250), ENABLE_LOG_DIAG);
+            installDebugHooks(this.containerEl as HTMLElement, () => this.suppressInit(250));
             this.debugHooksInstalled = true;
         }
 
@@ -291,7 +276,7 @@ export class HierarchicalBacklinksView extends ItemView {
         // Prefer a locked snapshot from main (snapshot presence = locked)
         const snap = this.plugin.locks.get(noteId);
         if (snap) {
-            Logger.debug(ENABLE_LOG_HB, '[HB] initialize(): using LOCKED snapshot (no globals applied)');
+            dbgHB('initialize(): using LOCKED snapshot (no globals applied)');
             this.viewState = snap.viewState;
             this.viewState.isLocked = true;
             this.originalHierarchy = snap.hierarchy;
@@ -301,8 +286,7 @@ export class HierarchicalBacklinksView extends ItemView {
             this.treeNodeViews = [];
             this.treeNodeViews = layoutLocked.renderTree(this.originalHierarchy);
         } else {
-            Logger.debug(ENABLE_LOG_HB, '[HB] initialize(): UNLOCKED — globals => sortDescending =', this.sortDescending, ', isFlattened =', this.isFlattened);
-            this.viewState = { nodeStates: new Map<string, NodeViewState>(), isLocked: false };
+            dbgHB('initialize(): UNLOCKED — globals => sortDescending =', this.sortDescending, ', isFlattened =', this.isFlattened); this.viewState = { nodeStates: new Map<string, NodeViewState>(), isLocked: false };
 
             const file = new File(this.app, activeFile);
             this.originalHierarchy = await file.getBacklinksHierarchy();
@@ -328,7 +312,7 @@ export class HierarchicalBacklinksView extends ItemView {
     }
 
     async onOpen() {
-        registerViewEvents(this, { enableLogHB: ENABLE_LOG_HB });
+        registerViewEvents(this);
         return this.initialize();
     }
 
@@ -358,10 +342,9 @@ export class HierarchicalBacklinksView extends ItemView {
     }
 
     private updateSortOrder(descending: boolean) {
-        Logger.debug(ENABLE_LOG_SORT, `[updateSortOrder] Current=${this.sortDescending}, New=${descending}`);
+        dbgSort('updateSortOrder: Current=', this.sortDescending, ' New=', descending);
         this.sortDescending = descending;
-        Logger.debug(ENABLE_LOG_SORT, "[updateSortOrder] BEFORE remount; collected views:", this.treeNodeViews.length,
-            "flattened=", this.isFlattened);
+        dbgSort('updateSortOrder: BEFORE remount; collected views:', this.treeNodeViews.length, 'flattened=', this.isFlattened);
         // We rebuild the DOM from a sorted data source and rely on createPane()
         // to reapply per-node states (isCollapsed/isVisible) via viewState.
         const container = this.containerEl.children[1] as HTMLElement; // .view-content
@@ -375,7 +358,7 @@ export class HierarchicalBacklinksView extends ItemView {
                 descending ? nameOf(b).localeCompare(nameOf(a)) : nameOf(a).localeCompare(nameOf(b))
             );
             this.createPane(container, leaves);
-            Logger.debug(ENABLE_LOG_SORT, "[updateSortOrder] AFTER remount; collected views:", this.treeNodeViews.length);
+            dbgSort('updateSortOrder: AFTER remount; collected views:', this.treeNodeViews.length);
         } else {
             // Take snapshot for sort restore
             this.sortSnapshot = snapshotNodeStates(this.viewState!);
@@ -385,7 +368,7 @@ export class HierarchicalBacklinksView extends ItemView {
             const cloned = cloneHierarchy(this.originalHierarchy);
             deepSortHierarchy(cloned, descending);
             this.createPane(container, cloned);
-            Logger.debug(ENABLE_LOG_SORT, "[updateSortOrder] AFTER remount; collected views:", this.treeNodeViews.length);
+            dbgSort('updateSortOrder: AFTER remount; collected views:', this.treeNodeViews.length);
         }
     }
 
@@ -400,7 +383,7 @@ export class HierarchicalBacklinksView extends ItemView {
         uiState.query = trimmed;
         const sid = ++this.searchSeq;
 
-        Logger.debug(ENABLE_LOG_FILTER, "[filter] BEGIN q=", trimmed, " active=", activeSummary());
+        dbgFilter('BEGIN q=', trimmed, ' active=', activeSummary());
 
         applyFilter(
             {
@@ -416,7 +399,7 @@ export class HierarchicalBacklinksView extends ItemView {
             }
         );
 
-        Logger.debug(ENABLE_LOG_FILTER, "[filter] END   q=", trimmed, " active=", activeSummary());
+        dbgFilter('END   q=', trimmed, ' active=', activeSummary());
     }
 
     private toggleFlatten(flattened: boolean) {

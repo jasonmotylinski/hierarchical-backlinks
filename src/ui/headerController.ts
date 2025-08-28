@@ -1,11 +1,9 @@
+import { dbgHC } from "../utils/debug";
 import { App } from "obsidian";
 import { NavButtonsView } from "../nav/navButtonsView";
 import { SearchBar } from "../nav/searchBar";
 import { uiState } from "./uiState";
-import { Logger } from "../utils/logger";
 import type { BacklinksLayoutHandlers } from "../types";
-
-const ENABLE_LOG_HB = false;
 
 export type HeaderElements = {
   headerEl: HTMLDivElement;
@@ -26,7 +24,7 @@ export class HeaderController {
   private lockBadgeEl: HTMLSpanElement | null = null;
 
   setCallbacks(cb: BacklinksLayoutHandlers) {
-    Logger.debug(ENABLE_LOG_HB, "[HB][header] setCallbacks", !!cb);
+    dbgHC("setCallbacks", !!cb);
     this.callbacks = cb;
   }
 
@@ -147,7 +145,7 @@ export class HeaderController {
     search.onChange((value) => {
       const q = (value ?? "").toLowerCase();
       uiState.query = q;
-      Logger.debug(ENABLE_LOG_HB, "[HB][header] search →", q, "callbacks?", !!this.callbacks);
+      dbgHC("search →", q, "callbacks?", !!this.callbacks);
       this.callbacks?.onSearchChange?.(q);
     });
 

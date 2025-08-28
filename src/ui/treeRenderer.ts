@@ -1,10 +1,8 @@
-import { Logger } from "../utils/logger";
+import { dbgTR } from "../utils/debug";
 import { uiState } from "./uiState";
 import type { BacklinksLayoutHandlers } from "../types";
 import type { TreeNode } from "../tree/treeNode";
 import { TreeNodeView } from "../tree/treeNodeView";
-
-const ENABLE_LOG_HB = false;
 
 /**
  * Responsible ONLY for rendering the hierarchy into the scroll container.
@@ -20,7 +18,7 @@ export class TreeRenderer {
      * Render the provided hierarchy. Returns the created TreeNodeViews.
      */
     render(hierarchy: TreeNode[], callbacks: BacklinksLayoutHandlers): TreeNodeView[] {
-        Logger.debug(ENABLE_LOG_HB, "[HB][tree] render: start len=", hierarchy?.length ?? 0);
+        dbgTR("start len=", hierarchy?.length ?? 0);
 
         this.roots = hierarchy || [];
         this.scrollEl.empty();
@@ -40,7 +38,7 @@ export class TreeRenderer {
 
         if (!this.roots.length) {
             this.scrollEl.createDiv({ cls: "search-empty-state", text: "No backlinks found." });
-            Logger.debug(ENABLE_LOG_HB, "[HB][tree] render: empty");
+            dbgTR("empty");
         } else {
             for (const node of this.roots) {
                 const wrapper = this.scrollEl.createDiv({
@@ -54,11 +52,7 @@ export class TreeRenderer {
                 this.rootWrappers.set(node.path, wrapper);
             }
 
-            Logger.debug(
-                ENABLE_LOG_HB,
-                "[HB][tree] render: built child count=",
-                this.scrollEl.childElementCount
-            );
+            dbgTR("Built child count=", this.scrollEl.childElementCount);
         }
 
         // If a query already exists (e.g., from previous pane), ask view to filter again

@@ -1,12 +1,10 @@
+import { dbgLayout } from "../utils/debug";
 import { App } from "obsidian";
-import { Logger } from "../utils/logger";
 import type { BacklinksLayoutHandlers } from "../types";
 import { HeaderController } from "./headerController";
 import { TreeRenderer } from "./treeRenderer";
 import { TreeNode } from "../tree/treeNode";
 import { TreeNodeView } from "../tree/treeNodeView";
-
-const ENABLE_LOG_HB = false;
 
 export class BacklinksLayout {
   constructor(private app: App) { }
@@ -20,7 +18,7 @@ export class BacklinksLayout {
   private rootEl: HTMLDivElement | null = null;
 
   public setCallbacks(callbacks: BacklinksLayoutHandlers) {
-    Logger.debug(ENABLE_LOG_HB, "[HB][layout] setCallbacks", !!callbacks);
+    dbgLayout("setCallbacks", !!callbacks);
     this.callbacks = callbacks;
     this.header?.setCallbacks(callbacks);
   }

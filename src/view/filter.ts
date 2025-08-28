@@ -1,4 +1,4 @@
-import { Logger } from "../utils/logger";
+import { dbgFilter } from "../utils/debug";
 import { TreeNode } from "../tree/treeNode";
 import { TreeNodeView } from "../tree/treeNodeView";
 import { NodeViewState } from "../types";
@@ -31,18 +31,16 @@ export function applyFilter(
     opts: FilterOptions
 ): FilterResult {
     const { roots, treeNodeViews, getOrCreateNodeViewState } = access;
-    const ENABLE_LOG = !!opts.enableLog;
-    const ENABLE_VERBOSE = !!opts.enableVerbose;
 
     const trimmed = (query || "").trim().toLowerCase();
 
-    Logger.debug(ENABLE_LOG, `[filterBacklinks:${seq}] ROOTS=${roots.length}`);
+    dbgFilter(`filterBacklinks:${seq} ROOTS=${roots.length}`);
     const allPaths: string[] = [];
     const collect = (n: TreeNode) => { allPaths.push(n.path); n.children.forEach(collect); };
     roots.forEach(collect);
-    Logger.debug(ENABLE_VERBOSE, `[filterBacklinks:${seq}] VISITABLE nodes=${allPaths.length} sample[0..10]=`, allPaths.slice(0, 10));
+    dbgFilter(`filterBacklinks:${seq} VISITABLE nodes=${allPaths.length} sample[0..10]=`, allPaths.slice(0, 10));
 
-    Logger.debug(ENABLE_LOG, `[filterBacklinks:${seq}] BEGIN query="${trimmed}"`);
+    dbgFilter(`filterBacklinks:${seq} BEGIN query="${trimmed}"`);
 
     // --- helpers local to this module ---
     const takeVisibilitySnapshot = (nodes: TreeNode[]): Map<string, boolean> => {
@@ -90,19 +88,13 @@ export function applyFilter(
         const predRaw = pred(node);
         const leafGate = node.isLeaf;
         const finMatch = leafGate && predRaw;
-        Logger.debug(
-            ENABLE_VERBOSE,
-            `[testTerm:diag] node="${node.path}" leaf=${leafGate} predRaw=${predRaw} finalMatch=${finMatch}`
-        );
+        dbgFilter(`testTerm diag node="${node.path}" leaf=${leafGate} predRaw=${predRaw} finalMatch=${finMatch}`);
 
         let childrenMatch = false;
         for (let i = 0; i < node.children.length; i++) {
             const child = node.children[i];
             const childVisible = markVisibilityForTree(child, pred);
-            Logger.debug(
-                ENABLE_VERBOSE,
-                `[children-visit] parent="${node.path}" idx=${i}/${node.children.length - 1} child="${child.path}" -> visible=${childVisible}`
-            );
+            dbgFilter(`children visit parent="${node.path}" idx=${i}/${node.children.length - 1} child="${child.path}" -> visible=${childVisible}`);
             childrenMatch = childrenMatch || childVisible;
         }
 
@@ -111,10 +103,7 @@ export function applyFilter(
         const nextVisible = isMatch || childrenMatch;
         state.isVisible = nextVisible;
 
-        Logger.debug(
-            ENABLE_VERBOSE,
-            `[filterTree] node="${node.path}", isLeaf=${node.isLeaf}, isMatch=${isMatch}, childrenMatches=${childrenMatch}, visible ${prevVisible} -> ${nextVisible}`
-        );
+        dbgFilter(`filterTree node="${node.path}", isLeaf=${node.isLeaf}, isMatch=${isMatch}, childrenMatches=${childrenMatch}, visible ${prevVisible} -> ${nextVisible}`);
 
         return state.isVisible;
     };
@@ -141,10 +130,7 @@ export function applyFilter(
     }
 
     const summary = summarizeVisibility(roots);
-    Logger.debug(
-        ENABLE_LOG,
-        `[filterBacklinks:${seq}] END query="${trimmed}" | changed=${changed} | total=${summary.total}, visible=${summary.visible} (leaves=${summary.visibleLeaves}, folders=${summary.visibleFolders})`
-    );
+    dbgFilter(`filterBacklinks:${seq} END query="${trimmed}" | changed=${changed} | total=${summary.total}, visible=${summary.visible} (leaves=${summary.visibleLeaves}, folders=${summary.visibleFolders})`);
 
     // Push visibility updates to DOM
     for (const v of treeNodeViews) v.applyNodeViewStateToUI();

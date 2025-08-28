@@ -1,13 +1,10 @@
+import { dbgTNV } from "../utils/debug";
 import { App, setIcon } from "obsidian";
 import { SearchResultFileMatchView } from "../view/searchResultFileMatchView";
 import { ContentReference, ViewState, NodeViewState, NodeId } from "../types";
 import { TreeNode } from "./treeNode";
-import { Logger } from "../utils/logger";
 import { uiState } from "../ui/uiState";
 import { getOrCreateNodeViewState } from "../view/state";
-
-const ENABLE_LOG_TOGGLE = false; // Set to true to enable toggle logging
-const ENABLE_LOG_CREATE = false; // Set to true to enable node creation logging
 
 export class TreeNodeView {
     private app: App;
@@ -32,9 +29,9 @@ export class TreeNodeView {
         this.treeNode = treeNode;
         this.treeNodeViewChildren = [];
         this.viewState = viewState;
-        Logger.debug(ENABLE_LOG_CREATE, "[TNV:ctor] path=", this.treeNode?.path);
+        dbgTNV("ctor path=", this.treeNode?.path);
         const kidsCount = this.treeNode?.children?.length ?? 0;
-        Logger.debug(ENABLE_LOG_CREATE, "[TNV:ctor] children count=", kidsCount);
+        dbgTNV("ctor children count=", kidsCount);
     }
 
     render() {
@@ -111,7 +108,7 @@ export class TreeNodeView {
     appendTreeItemChildren(treeItem: HTMLDivElement, children: TreeNode[]) {
         this.childrenContainer = treeItem.createDiv({ cls: "tree-item-children" });
         children.forEach((c) => {
-            Logger.debug(ENABLE_LOG_CREATE, "[TNV:child-create] parent=", this.treeNode?.path, "child=", c?.path);
+            dbgTNV("child-create parent=", this.treeNode?.path, "child=", c?.path);
             const treeNodeView = new TreeNodeView(
                 this.app,
                 this.childrenContainer!,
@@ -149,7 +146,7 @@ export class TreeNodeView {
 
         this.applyNodeViewStateToUI();
 
-        Logger.debug(ENABLE_LOG_TOGGLE, "[ListToggleOn]", this.treeNode.title, "→ isCollapsed set to:", state.isCollapsed);
+        dbgTNV("ListToggleOn", this.treeNode.title, "→ isCollapsed set to:", state.isCollapsed);
     }
 
     listToggleOff() {
@@ -168,7 +165,7 @@ export class TreeNodeView {
 
         this.applyNodeViewStateToUI();
 
-        Logger.debug(ENABLE_LOG_TOGGLE, "[ListToggleOff]", this.treeNode.title, "| isLeaf:", this.treeNode.isLeaf, "| contentCollapsed:", uiState.contentCollapsed, "→ isCollapsed set to:", state.isCollapsed);
+        dbgTNV("ListToggleOff", this.treeNode.title, "| isLeaf:", this.treeNode.isLeaf, "| contentCollapsed:", uiState.contentCollapsed, "→ isCollapsed set to:", state.isCollapsed);
     }
 
     contentHiddenToggleOn() {
@@ -179,17 +176,17 @@ export class TreeNodeView {
 
 
         if (this.treeNode.isLeaf) {
-            Logger.debug(ENABLE_LOG_TOGGLE, "[ContentHiddenToggleOn]", this.treeNode.title, "| isLeaf:", true, "→ Collapsing");
+            dbgTNV("ContentHiddenToggleOn", this.treeNode.title, "| isLeaf:", true, "→ Collapsing");
             state.isCollapsed = true;
         } else {
-            Logger.debug(ENABLE_LOG_TOGGLE, "[ContentHiddenToggleOn]", this.treeNode.title, "| isLeaf:", false, "→ Skipping collapse");
+            dbgTNV("ContentHiddenToggleOn", this.treeNode.title, "| isLeaf:", false, "→ Skipping collapse");
         }
 
         this.treeNodeViewChildren.forEach(child => child.contentHiddenToggleOn());
 
         this.applyNodeViewStateToUI();
 
-        Logger.debug(ENABLE_LOG_TOGGLE, "[ContentHiddenToggleOn] contentCollapsed set to true");
+        dbgTNV("ContentHiddenToggleOn contentCollapsed set to true");
     }
 
     contentHiddenToggleOff() {
@@ -202,13 +199,13 @@ export class TreeNodeView {
             const parent = this.treeNode.parent;
             const parentCollapsed = parent ? (this.viewState.nodeStates.get(parent.path)?.isCollapsed ?? false) : false;
 
-            Logger.debug(ENABLE_LOG_TOGGLE, "[ContentHiddenToggleOff]", this.treeNode.title, "| isLeaf:", true, "| hasParent:", !!parent, "| parent.isCollapsed:", parentCollapsed);
+            dbgTNV("ContentHiddenToggleOff", this.treeNode.title, "| isLeaf:", true, "| hasParent:", !!parent, "| parent.isCollapsed:", parentCollapsed);
 
             if (!parent || !parentCollapsed) {
                 state.isCollapsed = false;
-                Logger.debug(ENABLE_LOG_TOGGLE, "[ContentHiddenToggleOff] → Expanding leaf node:", this.treeNode.title);
+                dbgTNV("ContentHiddenToggleOff → Expanding leaf node:", this.treeNode.title);
             } else {
-                Logger.debug(ENABLE_LOG_TOGGLE, "[ContentHiddenToggleOff] → Keeping leaf node collapsed due to collapsed parent:", this.treeNode.title);
+                dbgTNV("ContentHiddenToggleOff → Keeping leaf node collapsed due to collapsed parent:", this.treeNode.title);
             }
         }
 
@@ -216,7 +213,7 @@ export class TreeNodeView {
 
         this.applyNodeViewStateToUI();
 
-        Logger.debug(ENABLE_LOG_TOGGLE, "[ContentHiddenToggleOff] contentCollapsed set to false");
+        dbgTNV("ContentHiddenToggleOff contentCollapsed set to false");
     }
 
     toggle() {
@@ -229,9 +226,9 @@ export class TreeNodeView {
 
     // Applies this node's view state to the UI, then recursively applies to all descendant nodes.
     applyNodeViewStateToUI() {
-        Logger.debug(ENABLE_LOG_CREATE, "[TNV:applyNodeViewStateToUI] path=", this.treeNode?.path);
+        dbgTNV("applyNodeViewStateToUI path=", this.treeNode?.path);
         const state = this.getOrCreateNodeViewState();
-        Logger.debug(ENABLE_LOG_CREATE, "[TNV:applyNodeViewStateToUI] current state=", state);
+        dbgTNV("applyNodeViewStateToUI current state=", state);
         let isCollapsed = state.isCollapsed;
 
         // NEW: if the node is not visible, hide it and skip collapse logic

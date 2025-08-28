@@ -1,9 +1,6 @@
+import { dbgButton } from "../utils/debug";
 import { App, setIcon } from "obsidian";
 import { EventEmitter } from "events";
-import { Logger } from "../utils/logger";
-//import { collapseLeafMatchBlocks } from "utils/collapseUtils";
-
-const ENABLE_LOG_BUTTON = false;
 
 export class CollapseButton extends EventEmitter {
     private app: App;
@@ -23,20 +20,20 @@ export class CollapseButton extends EventEmitter {
 
         // Prevent navbar buttons from stealing editor focus
         this.button.addEventListener("mousedown", (e) => {
-            Logger.debug(ENABLE_LOG_BUTTON,"[CollapseButton] mousedown prevented for", this.icon);
+            dbgButton("mousedown prevented for", this.icon);
             e.preventDefault();
         });
 
         // collapseButtons.ts — inside render(), in the click listener:
         this.button.addEventListener("click", (e) => {
-            Logger.debug(ENABLE_LOG_BUTTON,"[CollapseButton] click:", this.icon, "active before =", document.activeElement?.tagName, document.activeElement?.className);
-            Logger.debug(ENABLE_LOG_BUTTON,"[CollapseButton] click path =", e.composedPath().map((el:any)=>el?.className || el?.tagName));
+            dbgButton("click:", this.icon, "active before =", document.activeElement?.tagName, document.activeElement?.className);
+            dbgButton("click path =", e.composedPath().map((el:any)=>el?.className || el?.tagName));
             this.button.classList.toggle('is-active');
             this.emit("collapse-click", e);
             // after the view handles it (often async), check again on next tick
             setTimeout(() => {
                 const ae = document.activeElement as HTMLElement | null;
-                Logger.debug(ENABLE_LOG_BUTTON,"[CollapseButton] after toggle:", this.icon, "active =", ae?.tagName, ae?.className);
+                dbgButton("after toggle:", this.icon, "active =", ae?.tagName, ae?.className);
             }, 0);
         });
     }
