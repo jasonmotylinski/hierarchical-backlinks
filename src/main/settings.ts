@@ -20,8 +20,8 @@ export class HierarchicalBacklinksSettingTab extends PluginSettingTab {
     containerEl.createEl("h2", { text: "Hierarchical Backlinks Settings" });
 
     new Setting(containerEl)
-      .setName("Hide Content by Default")
-      .setDesc("Next time the plugin is loaded, content will be hidden by default.")
+      .setName("Hide Context by Default")
+      .setDesc("Next time the plugin is loaded, context will be hidden by default.")
       .addToggle(toggle =>
         toggle
           .setValue(this.plugin.settings.toggleLeafNodes)
