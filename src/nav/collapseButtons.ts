@@ -1,5 +1,5 @@
 import { dbgButton } from "../utils/debug";
-import { App, setIcon } from "obsidian";
+import { App, setIcon, setTooltip } from "obsidian";
 import { EventEmitter } from "events";
 
 export class CollapseButton extends EventEmitter {
@@ -7,16 +7,24 @@ export class CollapseButton extends EventEmitter {
     private parent: Element;
     private button: HTMLDivElement;
     private icon: string;
-    constructor(app: App, parent: Element, icon: string) {
+    private tooltip?: string;
+    constructor(app: App, parent: Element, icon: string, tooltip?: string) {
         super();
         this.app = app;
         this.parent = parent;
         this.icon = icon;
+        this.tooltip = tooltip;
     }
 
     render() {
         this.button = this.parent.createDiv({ cls: "clickable-icon nav-action-button" });
         setIcon(this.button, this.icon);
+        if (this.tooltip && this.tooltip.trim().length > 0) {
+            // Native Obsidian tooltip (positions like 'top' | 'bottom' | 'left' | 'right')
+            setTooltip(this.button, this.tooltip, { placement: "bottom" });
+            // Also set ARIA label for accessibility/screen readers
+            this.button.setAttr("aria-label", this.tooltip);
+        }
 
         // Prevent navbar buttons from stealing editor focus
         this.button.addEventListener("mousedown", (e) => {
