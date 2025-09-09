@@ -101,7 +101,7 @@ export default class HierarchicalBacklinksPlugin extends Plugin {
             name: "Toggle lock",
             callback: () => {
                 this.withActiveView((v) => {
-                    const noteId: string | null = v?.currentNoteId ?? null;
+                    const noteId: string | null = v.getCurrentNoteId();
                     const isLocked = noteId ? this.locks.has(noteId) : false;
                     v.actionLock?.(!isLocked);
                 }, { respectLock: false });
@@ -113,9 +113,15 @@ export default class HierarchicalBacklinksPlugin extends Plugin {
             id: "hb-focus-search",
             name: "Focus search",
             callback: () => {
-                this.withActiveView((view) => view.focusSearch?.(), { respectLock: false });
+                // Toggle semantics must mirror actionSearchToggle: show when currently collapsed.
+                const next = !uiState.searchCollapsed;
+                this.withActiveView((v) => {
+                    v.actionSearchToggle(next);
+                }, { respectLock: false });
             },
         });
+
+
     }
 
     async onUserEnable() {
@@ -144,16 +150,18 @@ export default class HierarchicalBacklinksPlugin extends Plugin {
         await this.saveData(this.settings);
     }
 
-    private withActiveView(apply: (view: any) => void, opts: { respectLock?: boolean } = {}) {
+    private withActiveView(apply: (view: HierarchicalBacklinksView) => void, opts: { respectLock?: boolean } = {}) {
         const { respectLock = true } = opts;
         const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE);
         if (!leaves.length) return;
-        const v = leaves[0].view as any;
-        if (respectLock && v?.viewState?.isLocked) return; // respect lock by default
+        const v = leaves[0].view as HierarchicalBacklinksView;
+        if (respectLock && v.isLocked()) return; // respect lock by default
         try { apply(v); } catch (_) { }
     }
 
+    // refreshOpenViews() in LockService is broader. This is just for the active view.
+    // Not used but could be useful in future.
     private refreshActiveView() {
-        this.withActiveView((v) => v.refresh?.(), { respectLock: false });
+        this.withActiveView((v) => v.refresh(), { respectLock: false });
     }
 }

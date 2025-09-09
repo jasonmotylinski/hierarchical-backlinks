@@ -119,6 +119,10 @@ export class HierarchicalBacklinksView extends ItemView {
                 else self.treeNodeViews.forEach((n) => n.contentHiddenToggleOff());
                 self.layout?.setContentActive(collapsed);
             },
+            onSearchToggle: (isOn: boolean) => {
+                uiState.searchCollapsed = isOn;
+                this.layout?.setSearchActive?.(!!isOn);
+            },
             onSearchChange: (q: string) => {
                 // setTimeout(() => self.refocusEditorIfNoSearch(), 0);
                 dbgHB('cb:filter', { q, locked: self.isNoteLocked(), nodes: self.treeNodeViews.length });
@@ -210,16 +214,9 @@ export class HierarchicalBacklinksView extends ItemView {
     }
 
     public actionSearchToggle(show: boolean) {
-        // Keep the original semantics you implemented for the search bar command
-        if (show) {
-            this.layout?.setSearchActive?.(true);
-            this.layout?.focusSearch?.();
-        } else {
-            this.layout?.clearSearch?.(); // clears UI + uiState.query if your layout implements it
-            this.layout?.setSearchActive?.(false);
-            // Do not refocus here; refocus is handled in navbar callbacks and helper
-            this.refocusEditorIfNoSearch();
-        }
+        //uiState.searchCollapsed = !!show;
+        const h = this.buildNavCallbacks(this.isNoteLocked());
+        h.onSearchToggle(!!show);
     }
 
     async initialize() {
@@ -499,4 +496,12 @@ export class HierarchicalBacklinksView extends ItemView {
         } catch (e) { dbgHB('refresh(): error', e); }
     }
 
+    // in src/view/view.ts inside HierarchicalBacklinksView
+    public getCurrentNoteId(): string | null {
+        return this.currentNoteId ?? null;
+    }
+
+    public isLocked(): boolean {
+        return !!this.viewState?.isLocked;
+    }
 }

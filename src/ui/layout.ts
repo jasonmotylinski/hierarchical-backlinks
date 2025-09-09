@@ -75,15 +75,9 @@ export class BacklinksLayout {
   public setFlattenActive(on: boolean) { this.header?.setFlattenActive(on); }
   public setSortActive(on: boolean) { this.header?.setSortActive(on); }
   public setLockActive(on: boolean) { this.header?.setLockActive(on); }
+  public setSearchActive(on: boolean) { this.header?.setSearchActive(on); }
 
-  public focusSearch() { this.header?.focusSearch(); }
-  public setSearchActive(active: boolean) { this._searchActive = !!active; this.header?.setSearchActive(active); }
-  public clearSearch() {
-    this._searchActive = false;
-    this.header?.clearSearch();
-  }
-  /** Returns whether the search bar is currently visible (toggled on). */
   public isSearchVisible(): boolean {
-    return !!this._searchActive;
+    return this.header?.isSearchVisible() ?? false;
   }
 }

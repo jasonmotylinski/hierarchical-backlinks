@@ -37,6 +37,7 @@ export interface BacklinksLayoutHandlers {
   onSortToggle: (descending: boolean) => void;
   onFlattenToggle: (flattened: boolean) => void;
   onLockToggle: (locked: boolean) => void;
+  onSearchToggle?: (show: boolean) => void;
   initialFlattened: boolean;
   initialLocked: boolean;
 }

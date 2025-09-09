@@ -115,9 +115,14 @@ export class HeaderController {
       this.callbacks?.onFlattenToggle(on);
     });
     nav.lockCollapseButton.on("collapse-click", () => {
-      const locked = nav.lockCollapseButton.isCollapsed();
-      this.applyLockVisuals(locked);
-      this.callbacks?.onLockToggle?.(locked);
+      const on = nav.lockCollapseButton.isCollapsed();
+      this.applyLockVisuals(on);
+      this.callbacks?.onLockToggle?.(on);
+    });
+    nav.searchCollapseButton.on("collapse-click", () => {
+      const on = nav.searchCollapseButton.isCollapsed();
+      uiState.searchCollapsed = on;
+      this.callbacks?.onSearchToggle?.(on);
     });
 
     // search bar
@@ -130,17 +135,6 @@ export class HeaderController {
     const show = (uiState.searchCollapsed ?? false) || hadQuery;
     nav.searchCollapseButton.setCollapsed(show);
     search.containerEl.style.display = show ? "" : "none";
-
-    nav.searchCollapseButton.on("collapse-click", () => {
-      const isOn = nav.searchCollapseButton.isCollapsed();
-      uiState.searchCollapsed = isOn;
-      if (isOn) {
-        this.setSearchActive(true);
-      } else {
-        this.clearSearch();
-        this.setSearchActive(false);
-      }
-    });
 
     search.onChange((value) => {
       const q = (value ?? "").toLowerCase();
@@ -168,36 +162,30 @@ export class HeaderController {
   }
 
   /** Search helpers */
-  focusSearch() {
-    const nav = this.nav, sb = this.search;
+  setSearchActive(active: boolean) {
+    const nav = this.nav;
+    const sb = this.search;
     if (!nav || !sb) return;
-    const isOn = nav.searchCollapseButton.isCollapsed();
-    if (!isOn) {
-      nav.searchCollapseButton.setCollapsed(true);
+  
+    if (this.isSearchVisible() === !!active) {
+      nav.searchCollapseButton.setCollapsed(!!active);
+      return;
+    }
+  
+    nav.searchCollapseButton.setCollapsed(!!active);
+  
+    if (active) {
       sb.containerEl.style.display = "";
-      (sb.containerEl.querySelector("input") as HTMLInputElement | null)?.focus();
+      const input = sb.containerEl.querySelector("input") as HTMLInputElement | null;
+      setTimeout(() => input?.focus(), 0);
     } else {
-      nav.searchCollapseButton.setCollapsed(false);
+      try { sb.setValue(""); } catch {}
+      try { uiState.query = ""; } catch {}
+      try { this.callbacks?.onSearchChange?.(""); } catch {}
       sb.containerEl.style.display = "none";
-      sb.setValue("");
-      uiState.query = "";
-      this.callbacks?.onSearchChange?.("");
     }
   }
-  setSearchActive(active: boolean) {
-    const sb = this.search, nav = this.nav;
-    if (!sb || !nav) return;
-    nav.searchCollapseButton.setCollapsed(!!active);
-    sb.containerEl.style.display = active ? "" : "none";
-    if (active) setTimeout(() => (sb.containerEl.querySelector("input") as HTMLInputElement | null)?.focus(), 0);
-  }
-  clearSearch() {
-    if (!this.search) return;
-    this.search.setValue("");
-    uiState.query = "";
-    this.callbacks?.onSearchChange?.("");
-  }
-
+  
   /** Accessors used by layout.ts */
   getScrollContainer(): HTMLDivElement | null { return this.scrollEl; }
 
@@ -212,6 +200,25 @@ export class HeaderController {
       sc?.classList.remove("hb-locked");
       if (this.lockBadgeEl) this.lockBadgeEl.style.display = "none";
       btnEl?.removeClass("hb-lock-active");
+    }
+  }
+
+  // HeaderController
+  public isSearchVisible(): boolean {
+    const sb = this.search;
+    if (!sb) return false;
+
+    const el = sb.containerEl as HTMLElement;
+
+    // If inline style is set, trust it first
+    const inline = el.style?.display;
+    if (inline) return inline !== "none";
+
+    // Otherwise fall back to computed style
+    try {
+      return getComputedStyle(el).display !== "none";
+    } catch {
+      return false;
     }
   }
 }
