@@ -1,5 +1,6 @@
+import { dbgLS } from "../utils/debug";
 import { App } from "obsidian";
-import { VIEW_TYPE } from "../view/view";
+import { HierarchicalBacklinksView, VIEW_TYPE } from "../view/view";
 import { LockedTreeSnapshot } from "../types";
 
 export default class LockService {
@@ -33,9 +34,10 @@ export default class LockService {
   refreshOpenViews(): void {
     const leaves = this.app.workspace.getLeavesOfType?.(VIEW_TYPE) ?? [];
     for (const leaf of leaves) {
-      const v = leaf.view as any;
-      if (v?.initialize) {
-        try { v.initialize(); } catch (_) {}
+      try {
+        (leaf.view as HierarchicalBacklinksView).refresh();
+      } catch (error) {
+        dbgLS("refreshOpenViews(): failed to refresh view", error);
       }
     }
   }

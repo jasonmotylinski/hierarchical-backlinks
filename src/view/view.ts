@@ -493,4 +493,10 @@ export class HierarchicalBacklinksView extends ItemView {
         return snap;
     }
 
+    public refresh(): void {
+        try {
+            this.applyGlobalsFromUiState();
+        } catch (e) { dbgHB('refresh(): error', e); }
+    }
+
 }

@@ -18,6 +18,7 @@ export const DEBUG_FLAGS = {
   hc: false,
   main: false,
   diag: false,
+  lockService: false,
 };
 
 /**
@@ -92,3 +93,4 @@ export const dbgTR = createDebugger("tr", "[TR]");
 export const dbgHC = createDebugger("hc", "[HC]");
 export const dbgMain = createDebugger("main", "[main]");
 export const dbgDiag = createDebugger("diag", "[diag]");
+export const dbgLS = createDebugger("lockService", "[LockService]");

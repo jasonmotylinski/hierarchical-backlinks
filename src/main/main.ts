@@ -154,6 +154,6 @@ export default class HierarchicalBacklinksPlugin extends Plugin {
     }
 
     private refreshActiveView() {
-        this.withActiveView((v) => v.applyGlobalsFromUiState?.(), { respectLock: false });
-      }
+        this.withActiveView((v) => v.refresh?.(), { respectLock: false });
+    }
 }
