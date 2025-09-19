@@ -67,11 +67,6 @@ export class TreeNodeView {
             (e) => { e.preventDefault(); e.stopPropagation(); },
             { capture: true }
         );
-        this.treeItemIcon.addEventListener(
-            "mousedown",
-            (e) => { e.preventDefault(); e.stopPropagation(); },
-            { capture: true }
-        );
 
         let name = treeNode.title;
         if (treeNode.children && treeNode.children.length == 0) {
