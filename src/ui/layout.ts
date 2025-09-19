@@ -63,7 +63,9 @@ export class BacklinksLayout {
   }
 
   public renderTree(hierarchy: TreeNode[]): TreeNodeView[] {
-    if (!this.tree) throw new Error("BacklinksLayout.renderTree before mountHeader");
+    if (!this.tree) {
+      throw new Error("BacklinksLayout.renderTree: TreeRenderer missing — call mountHeader() first");
+    }
     return this.tree.render(hierarchy, this.callbacks!);
   }
 
