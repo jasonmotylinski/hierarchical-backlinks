@@ -186,6 +186,8 @@ export class HeaderController {
   
   /** Accessors used by layout.ts */
   getScrollContainer(): HTMLDivElement | null { return this.scrollEl; }
+  getPaneElement(): HTMLDivElement | null { return this.paneEl; }
+  getHeaderElement(): HTMLDivElement | null { return this.headerEl; }
 
   private applyLockVisuals(locked: boolean) {
     const sc = this.scrollEl;
