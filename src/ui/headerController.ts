@@ -42,8 +42,12 @@ export class HeaderController {
     nav.render();
     this.nav = nav;
     this.headerEl =
-      (headerWrapper.querySelector(".nav-header") as HTMLDivElement) ||
+      (headerWrapper.querySelector(".nav-header") as HTMLDivElement | null) ||
       (headerWrapper as HTMLDivElement);
+
+    if (!this.headerEl) {
+      throw new Error("HeaderController.mount: missing header element");
+    }
 
     // let search clicks through; block others to avoid leaf activation
     this.headerEl.addEventListener("pointerdown", (e) => {
@@ -120,7 +124,7 @@ export class HeaderController {
     });
 
     // search bar
-    const search = new SearchBar(this.headerEl!, "Search...");
+    const search = new SearchBar(this.headerEl, "Search...");
     search.containerEl.addClass("hb-search");
     search.setValue(uiState.query ?? "");
     this.search = search;
