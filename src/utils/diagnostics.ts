@@ -29,34 +29,14 @@ export function installDebugHooks(
     }, true);
 
     // Mouse path diagnostics (capture phase) to see what bubbles up
-    containerEl.addEventListener(
-        "pointerdown",
-        (e) => {
-            const header = containerEl.querySelector(".nav-header") as HTMLElement | null;
-            if (header && header.contains(e.target as Node)) onHeaderInteraction();
-            const t = e.target as HTMLElement | null;
-            dbgDiag("pointerdown in HB view (capture) — target =", t?.tagName, t?.className);
-        },
-        true
-    );
-    containerEl.addEventListener(
-        "mousedown",
-        (e) => {
-            const header = containerEl.querySelector(".nav-header") as HTMLElement | null;
-            if (header && header.contains(e.target as Node)) onHeaderInteraction();
-            const t = e.target as HTMLElement | null;
-            dbgDiag("mousedown in HB view (capture) — target =", t?.tagName, t?.className);
-        },
-        true
-    );
-    containerEl.addEventListener(
-        "click",
-        (e) => {
-            const header = containerEl.querySelector(".nav-header") as HTMLElement | null;
-            if (header && header.contains(e.target as Node)) onHeaderInteraction();
-            const t = e.target as HTMLElement | null;
-            dbgDiag("click in HB view (capture) — target =", t?.tagName, t?.className);
-        },
-        true
-    );
+    const logPointerEvent = (type: string) => (e: Event) => {
+        const header = containerEl.querySelector(".nav-header") as HTMLElement | null;
+        if (header && header.contains(e.target as Node)) onHeaderInteraction();
+        const t = e.target as HTMLElement | null;
+        dbgDiag(`${type} in HB view (capture) — target =`, t?.tagName, t?.className);
+    };
+
+    containerEl.addEventListener("pointerdown", logPointerEvent("pointerdown"), true);
+    containerEl.addEventListener("mousedown", logPointerEvent("mousedown"), true);
+    containerEl.addEventListener("click", logPointerEvent("click"), true);
 }
