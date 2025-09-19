@@ -1,4 +1,4 @@
-import { dbgEval } from "../utils/debug";
+import { dbgEval, DEBUG_FLAGS } from "../utils/debug";
 import type { Clause, Term } from "./parse";
 import { parseSearchQuery } from "./parse";
 import type { TreeNode } from "../tree/treeNode";
@@ -31,7 +31,7 @@ export function makePredicate(clauses: Clause[], opts?: { defaultKey?: string })
     const ok = hay0.includes(ndl0);
     try {
       dbgEval(`includes key=${ctx.key} phase=${ctx.phase} node="${ctx.nodePath ?? "<n/a>"}" hay.len=${hay0.length} ndl="${ndl0}" → ${ok}`);
-      if (!ok && ndl0.length > 0) {
+      if (!ok && ndl0.length > 0 && DEBUG_FLAGS.eval) {
         const hayN = _norm(hay0);
         const ndlN = _norm(ndl0);
         const okN = hayN.includes(ndlN);
