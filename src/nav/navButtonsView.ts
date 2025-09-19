@@ -2,8 +2,8 @@ import { App } from "obsidian";
 import { CollapseButton } from "./collapseButtons";
 
 export class NavButtonsView {
-    private app;
-    private parent;
+    private app: App;
+    private parent: Element;
     public contentCollapseButton: CollapseButton;
     public listCollapseButton: CollapseButton;
     public searchCollapseButton: CollapseButton;
