@@ -137,10 +137,14 @@ export class HeaderController {
       this.callbacks?.onSearchChange?.(q);
     });
 
+    if (!this.headerEl || !this.paneEl || !this.scrollEl) {
+      throw new Error("HeaderController.mount: failed to initialize layout elements");
+    }
+
     return {
-      headerEl: this.headerEl!,
-      paneEl: this.paneEl!,
-      scrollContainer: this.scrollEl!,
+      headerEl: this.headerEl,
+      paneEl: this.paneEl,
+      scrollContainer: this.scrollEl,
     };
   }
 
