@@ -12,7 +12,7 @@ export default class HierarchicalBacklinksPlugin extends Plugin {
 
     async onload() {
 
-        document.addEventListener("focusin", () => {
+        this.registerDomEvent(document, "focusin", () => {
             const ae = document.activeElement as HTMLElement | null;
             dbgMain("focusin: activeElement =", ae?.tagName, ae?.className);
         });
