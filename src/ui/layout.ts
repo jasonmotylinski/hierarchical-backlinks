@@ -1,4 +1,4 @@
-import { dbgLayout } from "../utils/debug";
+import { dbgLayout } from "../utils/debugger";
 import { App } from "obsidian";
 import type { BacklinksLayoutHandlers } from "../types";
 import { HeaderController } from "./headerController";

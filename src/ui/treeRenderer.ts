@@ -1,4 +1,4 @@
-import { dbgTR } from "../utils/debug";
+import { dbgTR } from "../utils/debugger";
 import { uiState } from "./uiState";
 import type { BacklinksLayoutHandlers } from "../types";
 import type { TreeNode } from "../tree/treeNode";

@@ -1,4 +1,4 @@
-import { dbgDiag } from "../utils/debug";
+import { dbgDiag } from "./debugger";
 
 export function activeSummary(): string {
     const el = document.activeElement as HTMLElement | null;

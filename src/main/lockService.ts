@@ -1,4 +1,4 @@
-import { dbgLS } from "../utils/debug";
+import { dbgLS } from "../utils/debugger";
 import { App } from "obsidian";
 import { HierarchicalBacklinksView, VIEW_TYPE } from "../view/view";
 import { LockedTreeSnapshot } from "../types";

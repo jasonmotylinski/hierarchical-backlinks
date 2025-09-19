@@ -1,9 +1,9 @@
-import { dbgFilter } from "../utils/debug";
+import { dbgFilter } from "../utils/debugger";
 import { TreeNode } from "../tree/treeNode";
 import { TreeNodeView } from "../tree/treeNodeView";
 import { NodeViewState } from "../types";
-import { parseSearchQuery } from "../search/parse";
-import { makePredicate } from "../search/evaluate";
+import { parseSearchQuery } from "../search/parser";
+import { makePredicate } from "../search/evaluator";
 
 export interface FilterAccess {
     roots: TreeNode[];

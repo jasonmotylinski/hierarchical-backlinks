@@ -1,4 +1,4 @@
-import { dbgButton } from "../utils/debug";
+import { dbgButton } from "../utils/debugger";
 import { App, setIcon, setTooltip } from "obsidian";
 import { EventEmitter } from "events";
 

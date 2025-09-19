@@ -1,4 +1,4 @@
-import { dbgHC } from "../utils/debug";
+import { dbgHC } from "../utils/debugger";
 import { App } from "obsidian";
 import { NavButtonsView } from "../nav/navButtonsView";
 import { SearchBar } from "../nav/searchBar";

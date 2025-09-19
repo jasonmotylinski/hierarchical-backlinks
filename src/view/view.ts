@@ -1,4 +1,4 @@
-import { dbgHB, dbgHBTrace, dbgFilter, dbgSort } from "../utils/debug";
+import { dbgHB, dbgHBTrace, dbgFilter, dbgSort } from "../utils/debugger";
 import { ItemView, WorkspaceLeaf, MarkdownView } from "obsidian";
 import { File } from "../data/file";
 import HierarchicalBacklinksPlugin from "../main/main";

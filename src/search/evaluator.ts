@@ -1,6 +1,6 @@
-import { dbgEval, DEBUG_FLAGS } from "../utils/debug";
-import type { Clause, Term } from "./parse";
-import { parseSearchQuery } from "./parse";
+import { dbgEval, DEBUG_FLAGS } from "../utils/debugger";
+import type { Clause, Term } from "./parser";
+import { parseSearchQuery } from "./parser";
 import type { TreeNode } from "../tree/treeNode";
 
 export function makePredicate(clauses: Clause[], opts?: { defaultKey?: string }) {

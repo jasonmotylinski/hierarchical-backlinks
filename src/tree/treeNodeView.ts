@@ -1,4 +1,4 @@
-import { dbgTNV } from "../utils/debug";
+import { dbgTNV } from "../utils/debugger";
 import { App, setIcon } from "obsidian";
 import { SearchResultFileMatchView } from "../view/searchResultFileMatchView";
 import { ContentReference, ViewState, NodeViewState, NodeId } from "../types";

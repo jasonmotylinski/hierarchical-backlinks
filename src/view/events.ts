@@ -1,4 +1,4 @@
-import { dbgEvents } from "../utils/debug";
+import { dbgEvents } from "../utils/debugger";
 import type { HierarchicalBacklinksView } from "./view";
 import { MarkdownView } from "obsidian";
 

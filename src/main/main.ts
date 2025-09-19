@@ -1,4 +1,4 @@
-import { dbgMain } from "../utils/debug";
+import { dbgMain } from "../utils/debugger";
 import { Plugin, WorkspaceLeaf, Notice } from "obsidian";
 import { HierarchicalBacklinksSettingTab, DEFAULT_SETTINGS } from "./settings"; // Ensure this path is correct
 import { HierarchicalBacklinksView, VIEW_TYPE } from "../view/view";
