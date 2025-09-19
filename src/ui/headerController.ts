@@ -52,12 +52,6 @@ export class HeaderController {
       e.preventDefault();
       e.stopPropagation();
     });
-    this.headerEl.addEventListener("mousedown", (e) => {
-      const t = e.target as HTMLElement | null;
-      if (t?.closest(".hb-search")) return;
-      e.preventDefault();
-      e.stopPropagation();
-    });
 
     // lock badge
     this.lockBadgeEl = this.headerEl.createSpan({
