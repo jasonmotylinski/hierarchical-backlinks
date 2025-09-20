@@ -1,8 +1,7 @@
 import { dbgButton } from "../utils/debugger";
-import { App, setIcon, setTooltip } from "obsidian";
-import { EventEmitter } from "events";
+import { App, setIcon, setTooltip, Events } from "obsidian";
 
-export class CollapseButton extends EventEmitter {
+export class CollapseButton extends Events {
     private app: App;
     private parent: Element;
     private button: HTMLDivElement;
@@ -37,7 +36,7 @@ export class CollapseButton extends EventEmitter {
             dbgButton("click:", this.icon, "active before =", document.activeElement?.tagName, document.activeElement?.className);
             dbgButton("click path =", e.composedPath().map((el:any)=>el?.className || el?.tagName));
             this.button.classList.toggle('is-active');
-            this.emit("collapse-click", e);
+            this.trigger("collapse-click", e);
             // after the view handles it (often async), check again on next tick
             setTimeout(() => {
                 const ae = document.activeElement as HTMLElement | null;
