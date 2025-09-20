@@ -139,11 +139,13 @@ export default class HierarchicalBacklinksPlugin extends Plugin {
         if (leaves.length > 0) {
             leaf = leaves[0];
         } else {
-            leaf = workspace.getRightLeaf(false);
-            await leaf?.setViewState({ type: VIEW_TYPE, active: true });
+            leaf = workspace.getRightLeaf(false) ?? workspace.getRightLeaf(true);
+            if (leaf) {
+                await leaf.setViewState({ type: VIEW_TYPE, active: true });
+            }
         }
 
-        workspace.revealLeaf(leaf!);
+        if (leaf) workspace.revealLeaf(leaf);
     }
 
     async saveSettings() {
