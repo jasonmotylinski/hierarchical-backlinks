@@ -30,18 +30,32 @@ export function parseSearchQuery(input: string, defaultKey = "default"): ParseRe
   const next = () => input[i++];
 
   const readQuoted = (): string => {
-    // assumes current char is '"'
-    let out = ""; i++; // skip opening quote
+    const start = i;
+    if (peek() !== '"') {
+      throw new Error(`parseSearchQuery: expected opening quote at index ${i}`);
+    }
+    i++; // skip opening quote
+
+    let out = "";
+    let closed = false;
     while (i < n) {
       const c = next();
-      if (c === '\\') { // escape
-        if (i < n) out += next();
+      if (c === '\\') {
+        if (i < n) {
+          out += next();
+        }
       } else if (c === '"') {
+        closed = true;
         break;
       } else {
         out += c;
       }
     }
+
+    if (!closed) {
+      throw new Error(`parseSearchQuery: unterminated quote starting at index ${start}`);
+    }
+
     return out;
   };
 
@@ -56,17 +70,43 @@ export function parseSearchQuery(input: string, defaultKey = "default"): ParseRe
   };
 
   const readUntilMatchingBracket = (): string => {
-    // assumes current char is '['
-    let out = ""; i++; // skip '['
-    let depth = 1; // we do not support nested '[' but keep for safety if encountered
-    while (i < n) {
-      const c = next();
-      if (c === '"') { out += '"' + readQuoted() + '"'; continue; }
-      if (c === '[') { depth++; out += c; continue; }
-      if (c === ']') { depth--; if (depth === 0) break; out += c; continue; }
-      out += c;
+    const start = i;
+    if (peek() !== '[') {
+      throw new Error(`parseSearchQuery: expected '[' at index ${i}`);
     }
-    return out.trim();
+
+    let out = "";
+    i++; // skip initial '['
+    let depth = 1;
+
+    while (i < n) {
+      const c = peek();
+
+      if (c === '"') {
+        out += '"' + readQuoted() + '"';
+        continue;
+      }
+
+      if (c === '[') {
+        depth++;
+        out += next();
+        continue;
+      }
+
+      if (c === ']') {
+        next();
+        depth--;
+        if (depth === 0) {
+          return out.trim();
+        }
+        out += ']';
+        continue;
+      }
+
+      out += next();
+    }
+
+    throw new Error(`parseSearchQuery: unterminated '[' starting at index ${start}`);
   };
 
   const pushTerm = (key: string, value: string, neg: boolean) => {
