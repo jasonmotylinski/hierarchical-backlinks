@@ -44,12 +44,18 @@ export class BacklinksLayout {
       // header already mounted → just sync lock etc via setters
       this.header?.setLockActive(!!initialLocked);
       const header = this.header;
-      if (!header) throw new Error("BacklinksLayout.mountHeader: header missing after initial mount");
+      if (!header) {
+        throw new Error(
+          `BacklinksLayout.mountHeader: reuse path without HeaderController (rootEl assigned=${!!this.rootEl})`
+        );
+      }
       const pane = header.getPaneElement();
       const scroll = header.getScrollContainer();
       const hdrEl = header.getHeaderElement();
       if (!pane || !scroll || !hdrEl) {
-        throw new Error("BacklinksLayout.mountHeader: header DOM refs missing");
+        throw new Error(
+          `BacklinksLayout.mountHeader: header DOM refs missing (pane=${!!pane}, scroll=${!!scroll}, headerEl=${!!hdrEl})`
+        );
       }
       return {
         elements: {
