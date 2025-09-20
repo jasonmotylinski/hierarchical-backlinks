@@ -142,9 +142,17 @@ export function makePredicate(clauses: Clause[], opts?: { defaultKey?: string })
         break;
       }
       case "tag": {
-        const tags = valueToStrings(node.frontmatter?.tags ?? []);
-        try { dbgEval(`testTerm tag node="${(node as any).path}" tags=${JSON.stringify(tags)} v="${v}"`); } catch {}
-        ok = tags.some(t => lIncludes(t, v, { nodePath: (node as any).path, key: "tag", phase: "eval" }));
+        const tags = (((node as any).tags as string[] | undefined) ?? []).map(t => t.toLowerCase());
+        const rawQuery = typeof v === "string" ? v : String(v ?? "");
+        const query = rawQuery.replace(/^#/, "").trim().toLowerCase();
+        try {
+          dbgEval(`testTerm tag node="${(node as any).path}" tags=${JSON.stringify(tags)} rawQuery="${rawQuery}" normalizedQuery="${query}"`);
+        } catch {}
+        if (!query) {
+          ok = true;
+        } else {
+          ok = tags.some((t) => t === query || t.startsWith(`${query}/`));
+        }
         try { dbgEval(`testTerm tag node="${(node as any).path}" key="tag" value="${v}" ok=${ok}`); } catch {}
         break;
       }

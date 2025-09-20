@@ -1,4 +1,4 @@
-import { App, TFile, SearchMatchPart } from "obsidian";
+import { App, TFile, SearchMatchPart, CachedMetadata } from "obsidian";
 import { BacklinkReference, ContentReference } from "../types";
 import { TreeNode } from "../tree/treeNode";
 
@@ -39,6 +39,7 @@ export class File {
                 if (isLast) {
                     const cache = this.app.metadataCache.getFileCache(file);
                     node.setFrontmatter(cache?.frontmatter as unknown as Record<string, unknown> | undefined);
+                    node.setTags(this.extractTags(cache));
                 }
 
                 r.result.push(node);
@@ -74,6 +75,39 @@ export class File {
         }
 
         return result;
+    }
+
+    private extractTags(cache: CachedMetadata | null | undefined): string[] {
+        if (!cache) return [];
+
+        const out = new Set<string>();
+        const addTag = (value: unknown) => {
+            if (value == null) return;
+            if (Array.isArray(value)) {
+                value.forEach(addTag);
+                return;
+            }
+            let t = String(value).trim();
+            if (!t) return;
+            if (t.startsWith('#')) t = t.slice(1);
+            if (!t) return;
+            out.add(t.toLowerCase());
+        };
+
+        cache.tags?.forEach(({ tag }) => addTag(tag));
+
+        const fmTags = (cache.frontmatter as any)?.tags;
+        if (typeof fmTags === 'string') {
+            fmTags
+                .split(/[\s,]+/)
+                .map((s: string) => s.trim())
+                .filter(Boolean)
+                .forEach(addTag);
+        } else {
+            addTag(fmTags);
+        }
+
+        return Array.from(out);
     }
 
     async getReferences(path :string, backlinkReferences: BacklinkReference[]){

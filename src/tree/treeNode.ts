@@ -10,6 +10,8 @@ export class TreeNode implements TreeNodeData {
   isLeaf: boolean;
   // Optional: frontmatter properties of the underlying file (from Obsidian metadata cache)
   frontmatter?: Record<string, unknown>;
+  // Cached tag names (from inline tags + frontmatter)
+  tags: string[] = [];
 
   static contentHidden: boolean = false;
 
@@ -37,5 +39,23 @@ export class TreeNode implements TreeNodeData {
   /** Update frontmatter properties when available. */
   setFrontmatter(fm: Record<string, unknown> | undefined): void {
     if (fm && typeof fm === "object") this.frontmatter = fm;
+  }
+
+  /** Record resolved tags (deduplicated, without leading '#'). */
+  setTags(tags: string[] | undefined): void {
+    if (!Array.isArray(tags)) {
+      this.tags = [];
+      return;
+    }
+    const unique = new Set<string>();
+    for (const raw of tags) {
+      if (!raw) continue;
+      let t = String(raw).trim();
+      if (!t) continue;
+      if (t.startsWith("#")) t = t.slice(1);
+      if (!t) continue;
+      unique.add(t.toLowerCase());
+    }
+    this.tags = Array.from(unique);
   }
 }

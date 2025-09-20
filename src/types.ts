@@ -17,6 +17,7 @@ export interface TreeNodeData {
   children: TreeNode[];
   parent: TreeNode | null;
   isLeaf: boolean;
+  tags?: string[];
 }
 
 export interface NodeViewState {
