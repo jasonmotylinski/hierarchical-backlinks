@@ -111,14 +111,21 @@ export function applyFilter(
     // --- snapshot before ---
     const before = takeVisibilitySnapshot(roots);
 
-    // Build predicate
-    const { clauses } = parseSearchQuery(trimmed, "default");
-    const pred = makePredicate(clauses, { defaultKey: "default" });
+    let predicate: ((node: TreeNode) => boolean) | null = null;
+    if (trimmed.length > 0) {
+        try {
+            const { clauses } = parseSearchQuery(trimmed, "default");
+            predicate = makePredicate(clauses, { defaultKey: "default" });
+        } catch (error) {
+            const reason = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+            dbgFilter(`filterBacklinks:${seq} predicate build failed for query="${trimmed}"`, reason);
+        }
+    }
 
-    if (trimmed.length === 0) {
+    if (!predicate) {
         for (const node of roots) resetVisibilityForTree(node);
     } else {
-        for (const node of roots) markVisibilityForTree(node, pred);
+        for (const node of roots) markVisibilityForTree(node, predicate);
     }
 
     // --- snapshot after & diff ---
