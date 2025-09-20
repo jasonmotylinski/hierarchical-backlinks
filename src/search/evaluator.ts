@@ -9,11 +9,30 @@ export function makePredicate(clauses: Clause[], opts?: { defaultKey?: string })
   const includes = (hay?: string, needle?: string) =>
     (hay ?? "").toLowerCase().includes((needle ?? "").toLowerCase());
 
-  const testRegex = (s: string, pattern: string): boolean => {
-    // Accept /.../ or /.../i
-    const m = pattern.match(/^\/(.*)\/(i)?$/);
-    if (!m) return includes(s, pattern);
-    try { return new RegExp(m[1], m[2] ? "i" : undefined).test(s); } catch { return false; }
+  const parseRegexLiteral = (raw: string | undefined): RegExp | null => {
+    if (!raw || raw.length < 2 || raw[0] !== "/") return null;
+
+    let flagStart = raw.length;
+    while (flagStart > 1 && /[gimsuy]/.test(raw[flagStart - 1])) {
+      flagStart--;
+    }
+
+    const closing = flagStart - 1;
+    if (closing <= 0 || raw[closing] !== "/") return null;
+
+    let backslashes = 0;
+    for (let idx = closing - 1; idx >= 1 && raw[idx] === "\\"; idx--) backslashes++;
+    if (backslashes % 2 === 1) return null;
+
+    const pattern = raw.slice(1, closing);
+    const flags = raw.slice(closing + 1);
+    if (!/^[gimsuy]*$/.test(flags)) return null;
+
+    try {
+      return new RegExp(pattern, flags);
+    } catch {
+      return null;
+    }
   };
 
   const _cp = (s: string) =>
@@ -26,18 +45,31 @@ export function makePredicate(clauses: Clause[], opts?: { defaultKey?: string })
     needle: string | undefined,
     ctx: { nodePath?: string; key: string; phase: string }
   ): boolean => {
-    const hay0 = (hay ?? "").toLowerCase();
-    const ndl0 = (needle ?? "").toLowerCase();
-    const ok = hay0.includes(ndl0);
+    const hay0 = hay ?? "";
+    const ndl0 = needle ?? "";
+    const regex = parseRegexLiteral(ndl0);
+    if (regex) {
+      const result = regex.test(hay0);
+      try {
+        dbgEval(
+          `regex key=${ctx.key} phase=${ctx.phase} node="${ctx.nodePath ?? "<n/a>"}" pattern="${ndl0}" source.len=${hay0.length} → ${result}`
+        );
+      } catch {}
+      return result;
+    }
+
+    const hayLower = hay0.toLowerCase();
+    const ndlLower = ndl0.toLowerCase();
+    const ok = hayLower.includes(ndlLower);
     try {
-      dbgEval(`includes key=${ctx.key} phase=${ctx.phase} node="${ctx.nodePath ?? "<n/a>"}" hay.len=${hay0.length} ndl="${ndl0}" → ${ok}`);
-      if (!ok && ndl0.length > 0 && DEBUG_FLAGS.eval) {
-        const hayN = _norm(hay0);
-        const ndlN = _norm(ndl0);
+      dbgEval(`includes key=${ctx.key} phase=${ctx.phase} node="${ctx.nodePath ?? "<n/a>"}" hay.len=${hayLower.length} ndl="${ndlLower}" → ${ok}`);
+      if (!ok && ndlLower.length > 0 && DEBUG_FLAGS.eval) {
+        const hayN = _norm(hayLower);
+        const ndlN = _norm(ndlLower);
         const okN = hayN.includes(ndlN);
-        const idx = hay0.indexOf(ndl0);
+        const idx = hayLower.indexOf(ndlLower);
         const idxN = hayN.indexOf(ndlN);
-        dbgEval(`includes key=${ctx.key} diag node="${ctx.nodePath ?? "<n/a>"}" raw.hay="${hay0}" raw.ndl="${ndl0}" idx=${idx} cp.hay=[${_cp(hay0)}] cp.ndl=[${_cp(ndl0)}]`);
+        dbgEval(`includes key=${ctx.key} diag node="${ctx.nodePath ?? "<n/a>"}" raw.hay="${hayLower}" raw.ndl="${ndlLower}" idx=${idx} cp.hay=[${_cp(hayLower)}] cp.ndl=[${_cp(ndlLower)}]`);
         dbgEval(`includes key=${ctx.key} norm hayN.includes(ndlN) → ${okN} | hayN.len=${hayN.length} ndlN="${ndlN}" idxN=${idxN}`);
         const haySan = hayN.replace(/[\u00AD\u2010-\u2015_]/g, "-");
         const ndlSan = ndlN.replace(/[\u00AD\u2010-\u2015_]/g, "-");
@@ -69,14 +101,14 @@ export function makePredicate(clauses: Clause[], opts?: { defaultKey?: string })
 
   const evalPropExpr = (fmVal: unknown, expr: string): boolean => {
     const { clauses: propClauses } = parseSearchQuery(expr, "default");
-    const values = valueToStrings(fmVal).map((s) => s.toLowerCase());
+    const values = valueToStrings(fmVal);
     if (values.length === 0) return false;
 
     const testTermAgainstValue = (term: Term, s: string): boolean => {
       const v = term.value; // already raw; do case-insensitive compare here
-      // regex support if /.../
-      if (/^\/.+\/(i)?$/.test(v)) return testRegex(s, v);
-      return s.includes(v.toLowerCase());
+      const regex = parseRegexLiteral(v);
+      if (regex) return regex.test(s);
+      return includes(s, v);
     };
 
     // OR over clauses, AND within clause; any value can satisfy a clause
@@ -134,8 +166,7 @@ export function makePredicate(clauses: Clause[], opts?: { defaultKey?: string })
       case "refs":
       case "ref": {
         // TreeNode.references can be string | string[] | unknown
-        // Normalize to an array of lowercase strings, then fuzzy-include
-        const refs = valueToStrings((node as any).references ?? []).map(s => s.toLowerCase());
+        const refs = valueToStrings((node as any).references ?? []);
         try { dbgEval(`testTerm references node="${(node as any).path}" refs=${JSON.stringify(refs)} v="${v}"`); } catch {}
         ok = refs.some(r => lIncludes(r, v, { nodePath: (node as any).path, key: "references", phase: "eval" }));
         try { dbgEval(`testTerm references node="${(node as any).path}" key="references" value="${v}" ok=${ok}`); } catch {}
@@ -144,14 +175,19 @@ export function makePredicate(clauses: Clause[], opts?: { defaultKey?: string })
       case "tag": {
         const tags = (((node as any).tags as string[] | undefined) ?? []).map(t => t.toLowerCase());
         const rawQuery = typeof v === "string" ? v : String(v ?? "");
-        const query = rawQuery.replace(/^#/, "").trim().toLowerCase();
-        try {
-          dbgEval(`testTerm tag node="${(node as any).path}" tags=${JSON.stringify(tags)} rawQuery="${rawQuery}" normalizedQuery="${query}"`);
-        } catch {}
-        if (!query) {
-          ok = true;
+        const regex = parseRegexLiteral(rawQuery);
+        if (regex) {
+          ok = tags.some(t => regex.test(t) || regex.test(`#${t}`));
         } else {
-          ok = tags.some((t) => t === query || t.startsWith(`${query}/`));
+          const query = rawQuery.replace(/^#/, "").trim().toLowerCase();
+          try {
+            dbgEval(`testTerm tag node="${(node as any).path}" tags=${JSON.stringify(tags)} rawQuery="${rawQuery}" normalizedQuery="${query}"`);
+          } catch {}
+          if (!query) {
+            ok = true;
+          } else {
+            ok = tags.some((t) => t === query || t.startsWith(`${query}/`));
+          }
         }
         try { dbgEval(`testTerm tag node="${(node as any).path}" key="tag" value="${v}" ok=${ok}`); } catch {}
         break;
