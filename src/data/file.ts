@@ -123,21 +123,23 @@ export class File {
             else{
 				// match exists in frontmatter
                 const parts = p.key.split(".");
-                const key = parts[0];
-                const y = parts.slice(1);
-                var b = [];
-
-                if (y) {
-                    b = [];
-                    for (var w = 0, k = y; w < k.length; w++) {
-                        var C = k[w]
-                            , M = Number(C);
-                        b.push(Number.isNaN(M) ? C : M)
+                const root = parts.shift() ?? "";
+                const rawSegments = [...parts];
+                const subPath: (string | number)[] = [];
+                if (parts.length) {
+                    for (const segment of parts) {
+                        const numeric = Number(segment);
+                        subPath.push(Number.isNaN(numeric) ? segment : numeric);
                     }
                 }
+                const displaySegments = [root, ...rawSegments];
+                if (displaySegments.length > 1 && /^\d+$/.test(displaySegments[displaySegments.length - 1] ?? "")) {
+                    displaySegments.pop();
+                }
+                const displayKey = displaySegments.filter(Boolean).join(".");
                 reference.properties.push({
-                    key: key,
-                    subkey: b,
+                    key: displayKey,
+                    subkey: subPath,
 					original: p.original,
                     pos: [0, p.original.length]
                 })
