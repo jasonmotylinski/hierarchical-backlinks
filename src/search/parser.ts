@@ -162,8 +162,30 @@ export function parseSearchQuery(input: string, defaultKey = "default"): ParseRe
       const key = word.slice(0, colon).toLowerCase();
       let value = word.slice(colon + 1);
       // if the colon was the last char of what we read (e.g., key:"...") and next char starts a quote, read the quoted value now
-      if (!value && peek() === '"') value = readQuoted();
-      pushTerm(key, stripOuterQuotes(value), neg);
+      if (!value && peek() === '"') {
+        value = readQuoted();
+      } else if (value.startsWith('"')) {
+        // The quoted value may span multiple words (e.g., title:"daily note").
+        let body = value.slice(1);
+        const isEscaped = (str: string, idx: number) => {
+          let backslashes = 0;
+          for (let j = idx - 1; j >= 0 && str[j] === '\\'; j--) backslashes++;
+          return backslashes % 2 === 1;
+        };
+        while (true) {
+          const len = body.length;
+          if (len > 0 && body[len - 1] === '"' && !isEscaped(body, len - 1)) {
+            body = body.slice(0, -1);
+            break;
+          }
+          if (i >= n) break;
+          body += next();
+        }
+        value = body.replace(/\\"/g, '"');
+      } else {
+        value = stripOuterQuotes(value);
+      }
+      pushTerm(key, value, neg);
     } else {
       pushTerm(defaultKey, stripOuterQuotes(word), neg);
     }
