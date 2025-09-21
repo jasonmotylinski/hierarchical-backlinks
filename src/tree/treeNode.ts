@@ -49,12 +49,11 @@ export class TreeNode implements TreeNodeData {
     }
     const unique = new Set<string>();
     for (const raw of tags) {
-      if (!raw) continue;
-      let t = String(raw).trim();
-      if (!t) continue;
-      if (t.startsWith("#")) t = t.slice(1);
-      if (!t) continue;
-      unique.add(t.toLowerCase());
+      const normalized = String(raw ?? "")
+        .trim()
+        .replace(/^#/, "")
+        .toLowerCase();
+      if (normalized) unique.add(normalized);
     }
     this.tags = Array.from(unique);
   }
