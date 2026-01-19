@@ -12,6 +12,25 @@ npx vitest           # Run all tests
 npx vitest run src/search/__tests__/parser.spec.ts  # Run a single test file
 ```
 
+## Releasing
+
+To release a new version (e.g., 1.4.0):
+
+```bash
+# 1. Bump version in package.json (also updates manifest.json and versions.json)
+npm version 1.4.0 --no-git-tag-version
+
+# 2. Commit the version bump
+git add package.json manifest.json versions.json
+git commit -m "chore: bump version to 1.4.0"
+
+# 3. Create and push tag (triggers GitHub Actions)
+git tag 1.4.0
+git push origin main --tags
+```
+
+GitHub Actions (`.github/workflows/release.yml`) will build the plugin and create a **draft release** with `main.js`, `manifest.json`, and `styles.css`. Go to GitHub releases to add release notes and publish.
+
 ## Architecture Overview
 
 This is an Obsidian plugin that displays backlinks for the active document as a collapsible hierarchy based on folder structure, rather than a flat list.
