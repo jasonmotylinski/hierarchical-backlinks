@@ -245,6 +245,7 @@ export class HierarchicalBacklinksView extends ItemView {
             containerEl: this.containerEl as HTMLElement,
             refocus: this.refocusEditorIfNoSearch.bind(this),
             register: this.registerDomEvent.bind(this),
+            // @ts-ignore - commands exists at runtime but not in type definitions
             exec: (id: string) => this.app.commands.executeCommandById(id),
         });
 

@@ -7,6 +7,7 @@ export function cloneHierarchy(nodes: TreeNode[]): TreeNode[] {
         // recursively clone children
         children: cloneHierarchy(n.children || []),
         setFrontmatter: n.setFrontmatter, // preserve required method
+        setTags: n.setTags, // preserve required method
     }));
 }
 
@@ -38,6 +39,7 @@ export function buildFlattenedHierarchy(hierarchy: TreeNode[]): TreeNode[] {
                 ...node,
                 children: [],
                 setFrontmatter: node.setFrontmatter, // preserve required method
+                setTags: node.setTags, // preserve required method
             });
             return;
         }
