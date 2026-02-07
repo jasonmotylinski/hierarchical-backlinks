@@ -5,6 +5,7 @@ import { ContentReference, ViewState, NodeViewState, NodeId, HierarchicalBacklin
 import { TreeNode } from "./treeNode";
 import { uiState } from "../ui/uiState";
 import { getOrCreateNodeViewState } from "../view/state";
+import { getFolderNoteChild } from "./folderNote";
 
 export class TreeNodeView {
     private app: App;
@@ -41,24 +42,44 @@ export class TreeNodeView {
         this.treeItem = this.parent.createDiv({ cls: "tree-item" });
         this.treeItemSelf = this.treeItem.createDiv({ cls: "tree-item-self is-clickable backlink-item" });
 
-        this.appendEndNode(this.treeItemSelf, this.treeNode);
+        // Check for folder note merging
+        const folderNoteChild = this.settings.hideFolderNote
+            ? getFolderNoteChild(this.treeNode)
+            : null;
 
-        const treeItemFlair = this.treeItemSelf.createDiv({ cls: "tree-item-flair-outer" }).createEl("span", { cls: "tree-item-flair" });
-        if (this.treeNode.children.length > 0) {
-            this.appendTreeItemChildren(this.treeItem, this.treeNode.children);
+        if (folderNoteChild) {
+            // Merged folder note: render folder name but navigate to the child's file
+            this.appendEndNode(this.treeItemSelf, this.treeNode, folderNoteChild.path);
 
-        } else {
-            const total = this.treeNode.references.reduce((accumulator: number, curr) => {
+            // Show the reference count from the child
+            const treeItemFlair = this.treeItemSelf.createDiv({ cls: "tree-item-flair-outer" }).createEl("span", { cls: "tree-item-flair" });
+            const total = folderNoteChild.references.reduce((accumulator: number, curr) => {
                 return accumulator += curr.content.length + curr.properties.length;
             }, 0);
             treeItemFlair.setText(total.toString());
-            this.appendReferences(this.treeItem, this.treeNode, this.treeNode.references);
+
+            // Render the child's references under this folder node
+            this.appendReferences(this.treeItem, folderNoteChild, folderNoteChild.references);
+        } else {
+            this.appendEndNode(this.treeItemSelf, this.treeNode);
+
+            const treeItemFlair = this.treeItemSelf.createDiv({ cls: "tree-item-flair-outer" }).createEl("span", { cls: "tree-item-flair" });
+            if (this.treeNode.children.length > 0) {
+                this.appendTreeItemChildren(this.treeItem, this.treeNode.children);
+
+            } else {
+                const total = this.treeNode.references.reduce((accumulator: number, curr) => {
+                    return accumulator += curr.content.length + curr.properties.length;
+                }, 0);
+                treeItemFlair.setText(total.toString());
+                this.appendReferences(this.treeItem, this.treeNode, this.treeNode.references);
+            }
         }
 
         this.applyNodeViewStateToUI();
     }
 
-    appendEndNode(parent: HTMLDivElement, treeNode: TreeNode) {
+    appendEndNode(parent: HTMLDivElement, treeNode: TreeNode, navigatePath?: string) {
         this.treeItemIcon = parent.createDiv({ cls: "tree-item-icon collapse-icon" });
 
         this.treeItemIcon.setAttr("tabindex", "-1");
@@ -106,7 +127,7 @@ export class TreeNodeView {
             this.toggle();
         });
         treeItemInner.addEventListener("click", (e) => {
-            this.navigateTo(treeNode.path);
+            this.navigateTo(navigatePath ?? treeNode.path);
         });
     }
 

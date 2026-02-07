@@ -8,6 +8,7 @@ export const DEFAULT_SETTINGS: HierarchicalBacklinksSettings = {
   boldFileNames: true,
   useFrontmatterTitle: false,
   frontmatterTitleProperty: "title",
+  hideFolderNote: false,
 };
 
 export class HierarchicalBacklinksSettingTab extends PluginSettingTab {
@@ -77,6 +78,18 @@ export class HierarchicalBacklinksSettingTab extends PluginSettingTab {
           }),
       );
     propertyNameSetting.settingEl.toggle(this.plugin.settings.useFrontmatterTitle);
+
+    new Setting(containerEl)
+      .setName("Hide folder notes")
+      .setDesc("When a note has the same name as its parent folder, hide the duplicate and make the folder clickable.")
+      .addToggle(toggle =>
+        toggle
+          .setValue(this.plugin.settings.hideFolderNote)
+          .onChange(async (value) => {
+            this.plugin.settings.hideFolderNote = value;
+            await this.plugin.saveSettings();
+          }),
+      );
   }
 
   get toggleLeafNodes(): boolean {
