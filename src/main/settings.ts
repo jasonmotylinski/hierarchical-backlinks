@@ -6,6 +6,8 @@ import { VIEW_TYPE } from "../view/view";
 export const DEFAULT_SETTINGS: HierarchicalBacklinksSettings = {
   toggleLeafNodes: false,
   boldFileNames: true,
+  useFrontmatterTitle: false,
+  frontmatterTitleProperty: "title",
 };
 
 export class HierarchicalBacklinksSettingTab extends PluginSettingTab {
@@ -48,6 +50,33 @@ export class HierarchicalBacklinksSettingTab extends PluginSettingTab {
             });
           }),
       );
+
+    new Setting(containerEl)
+      .setName("Use frontmatter property as display name")
+      .setDesc("Display the value of a frontmatter property instead of the file name in the backlinks tree.")
+      .addToggle(toggle =>
+        toggle
+          .setValue(this.plugin.settings.useFrontmatterTitle)
+          .onChange(async (value) => {
+            this.plugin.settings.useFrontmatterTitle = value;
+            await this.plugin.saveSettings();
+            propertyNameSetting.settingEl.toggle(value);
+          }),
+      );
+
+    const propertyNameSetting = new Setting(containerEl)
+      .setName("Frontmatter property name")
+      .setDesc("The frontmatter property to use as the display name.")
+      .addText(text =>
+        text
+          .setPlaceholder("title")
+          .setValue(this.plugin.settings.frontmatterTitleProperty)
+          .onChange(async (value) => {
+            this.plugin.settings.frontmatterTitleProperty = value;
+            await this.plugin.saveSettings();
+          }),
+      );
+    propertyNameSetting.settingEl.toggle(this.plugin.settings.useFrontmatterTitle);
   }
 
   get toggleLeafNodes(): boolean {

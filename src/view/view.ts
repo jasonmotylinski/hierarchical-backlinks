@@ -92,7 +92,7 @@ export class HierarchicalBacklinksView extends ItemView {
         const self = this;
         return {
             createTreeNodeView: (containerEl: HTMLElement, node: TreeNode) => {
-                const v = new TreeNodeView(self.app, containerEl as HTMLDivElement, node, self.viewState!);
+                const v = new TreeNodeView(self.app, containerEl as HTMLDivElement, node, self.viewState!, self.plugin.settings);
                 self.treeNodeViews.push(v);
                 return v;
             },

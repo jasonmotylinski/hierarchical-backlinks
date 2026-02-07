@@ -1,7 +1,7 @@
 import { dbgTNV } from "../utils/debugger";
 import { App, setIcon } from "obsidian";
 import { SearchResultFileMatchView } from "../view/searchResultFileMatchView";
-import { ContentReference, ViewState, NodeViewState, NodeId } from "../types";
+import { ContentReference, ViewState, NodeViewState, NodeId, HierarchicalBacklinksSettings } from "../types";
 import { TreeNode } from "./treeNode";
 import { uiState } from "../ui/uiState";
 import { getOrCreateNodeViewState } from "../view/state";
@@ -17,18 +17,21 @@ export class TreeNodeView {
     private childrenContainer: HTMLDivElement | null = null;
     private matchBlock: HTMLDivElement | null = null;
     private viewState: ViewState;
+    private settings: HierarchicalBacklinksSettings;
 
     constructor(
         app: App,
         parent: HTMLDivElement,
         treeNode: TreeNode,
         viewState: ViewState,
+        settings: HierarchicalBacklinksSettings,
     ) {
         this.app = app;
         this.parent = parent;
         this.treeNode = treeNode;
         this.treeNodeViewChildren = [];
         this.viewState = viewState;
+        this.settings = settings;
         dbgTNV("ctor path=", this.treeNode?.path);
         const kidsCount = this.treeNode?.children?.length ?? 0;
         dbgTNV("ctor children count=", kidsCount);
@@ -75,6 +78,13 @@ export class TreeNodeView {
             if (firstLink) {
                 name = firstLink.basename;
             }
+
+            if (this.settings.useFrontmatterTitle) {
+                const fmValue = treeNode.frontmatter?.[this.settings.frontmatterTitleProperty];
+                if (typeof fmValue === "string" && fmValue.length > 0) {
+                    name = fmValue;
+                }
+            }
         }
 
         const treeItemInner = parent.createDiv({ cls: "tree-item-inner", text: name });
@@ -108,7 +118,8 @@ export class TreeNodeView {
                 this.app,
                 this.childrenContainer!,
                 c,
-                this.viewState
+                this.viewState,
+                this.settings
             );
             treeNodeView.render();
             this.treeNodeViewChildren.push(treeNodeView);
