@@ -24,6 +24,12 @@ If your plugin does not need CSS, delete this file.
   /*font-style: italic;*/
 }
 
+/* Allow users to disable bold file names via settings */
+.workspace-leaf-content[data-type='hierarchical-backlinks'].hbl-no-bold
+  .tree-item > .tree-item-self:has(+ .search-result-file-matches) .tree-item-inner {
+  font-weight: inherit !important;
+}
+
 /* TEMP: show a dashed outline on rows that match the selector (remove after verifying) */
 /* .workspace-leaf-content[data-type='hierarchical-backlinks']
   .tree-item > .tree-item-self:has(+ .search-result-file-matches) {

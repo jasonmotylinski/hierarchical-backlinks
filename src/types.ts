@@ -4,6 +4,7 @@ import { TreeNodeView } from "./tree/treeNodeView";
 
 export interface HierarchicalBacklinksSettings {
   toggleLeafNodes: boolean;
+  boldFileNames: boolean;
 }
 
 export type NodeId = string; // Node path used as unique identifier

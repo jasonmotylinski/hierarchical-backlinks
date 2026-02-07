@@ -230,7 +230,10 @@ export class HierarchicalBacklinksView extends ItemView {
 
         const container = this.containerEl.children[1] as HTMLElement; // .view-content
 
-        // Remember the editor leaf; we’ll restore it after remount if needed
+        // Apply bold file names setting
+        this.containerEl.toggleClass("hbl-no-bold", !this.plugin.settings.boldFileNames);
+
+        // Remember the editor leaf; we'll restore it after remount if needed
         const editorView = this.app.workspace.getActiveViewOfType(MarkdownView) || null;
         this.lastEditorLeaf = editorView?.leaf || this.lastEditorLeaf;
 
