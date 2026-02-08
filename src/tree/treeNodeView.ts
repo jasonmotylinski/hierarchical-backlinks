@@ -119,6 +119,19 @@ export class TreeNodeView {
             if (typeof fmValue === "string" && fmValue.length > 0) {
                 name = fmValue;
             }
+        } else if (treeNode.children && treeNode.children.length > 0 && this.settings.hideFolderNote && this.settings.useFrontmatterTitle) {
+            // Non-merged folder: look up its folder note in the vault for display name
+            const folderNotePath = this.settings.folderNoteIndexName
+                ? `${treeNode.path}/${this.settings.folderNoteIndexName}.md`
+                : `${treeNode.path}/${treeNode.title}.md`;
+            const file = this.app.vault.getFileByPath(folderNotePath);
+            if (file) {
+                const fm = this.app.metadataCache.getFileCache(file)?.frontmatter;
+                const fmValue = fm?.[this.settings.frontmatterTitleProperty];
+                if (typeof fmValue === "string" && fmValue.length > 0) {
+                    name = fmValue;
+                }
+            }
         }
 
         const treeItemInner = parent.createDiv({ cls: "tree-item-inner", text: name });
