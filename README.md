@@ -34,7 +34,7 @@ This is how this plugin displays backlinks:
 |---------|-------------|---------|
 | Hide Context by Default | Next time the plugin is loaded, context will be hidden by default. | Off |
 | Bold File Names | Display file names in bold when they have backlink matches. | On |
-| Use frontmatter property as display name | Display the value of a frontmatter property instead of the file name in the backlinks tree. | Off |
+| Use frontmatter property as display name | Display the value of a frontmatter property instead of the file name in the backlinks tree. Also applies to folder notes when "Hide folder notes" is enabled. | Off |
 | Frontmatter property name | The frontmatter property to use as the display name. Only visible when the above setting is enabled. | `title` |
 | Hide folder notes | When a note has the same name as its parent folder, hide the duplicate and make the folder clickable. | Off |
 | Index file name | Also treat a file with this name as a folder note regardless of the folder name (e.g. `overview` or `_index`). Disabled until "Hide folder notes" is enabled. | Empty |

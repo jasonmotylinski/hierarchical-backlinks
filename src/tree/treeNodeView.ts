@@ -50,7 +50,7 @@ export class TreeNodeView {
 
         if (folderNoteChild) {
             // Merged folder note: render folder name but navigate to the child's file
-            this.appendEndNode(this.treeItemSelf, this.treeNode, folderNoteChild.path);
+            this.appendEndNode(this.treeItemSelf, this.treeNode, folderNoteChild.path, folderNoteChild);
 
             // Show the reference count from the child
             const treeItemFlair = this.treeItemSelf.createDiv({ cls: "tree-item-flair-outer" }).createEl("span", { cls: "tree-item-flair" });
@@ -86,7 +86,7 @@ export class TreeNodeView {
         this.applyNodeViewStateToUI();
     }
 
-    appendEndNode(parent: HTMLDivElement, treeNode: TreeNode, navigatePath?: string) {
+    appendEndNode(parent: HTMLDivElement, treeNode: TreeNode, navigatePath?: string, folderNoteChild?: TreeNode) {
         this.treeItemIcon = parent.createDiv({ cls: "tree-item-icon collapse-icon" });
 
         this.treeItemIcon.setAttr("tabindex", "-1");
@@ -112,6 +112,11 @@ export class TreeNodeView {
                 if (typeof fmValue === "string" && fmValue.length > 0) {
                     name = fmValue;
                 }
+            }
+        } else if (folderNoteChild && this.settings.useFrontmatterTitle) {
+            const fmValue = folderNoteChild.frontmatter?.[this.settings.frontmatterTitleProperty];
+            if (typeof fmValue === "string" && fmValue.length > 0) {
+                name = fmValue;
             }
         }
 
