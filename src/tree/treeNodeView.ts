@@ -5,7 +5,7 @@ import { ContentReference, ViewState, NodeViewState, NodeId, HierarchicalBacklin
 import { TreeNode } from "./treeNode";
 import { uiState } from "../ui/uiState";
 import { getOrCreateNodeViewState } from "../view/state";
-import { getFolderNoteChild } from "./folderNote";
+import { getFolderNoteChild, getIndexNoteChild } from "./folderNote";
 
 export class TreeNodeView {
     private app: App;
@@ -42,9 +42,10 @@ export class TreeNodeView {
         this.treeItem = this.parent.createDiv({ cls: "tree-item" });
         this.treeItemSelf = this.treeItem.createDiv({ cls: "tree-item-self is-clickable backlink-item" });
 
-        // Check for folder note merging
+        // Check for folder note merging: same-name child first, then index name
         const folderNoteChild = this.settings.hideFolderNote
-            ? getFolderNoteChild(this.treeNode)
+            ? (getFolderNoteChild(this.treeNode)
+                ?? getIndexNoteChild(this.treeNode, this.settings.folderNoteIndexName))
             : null;
 
         if (folderNoteChild) {
@@ -60,6 +61,12 @@ export class TreeNodeView {
 
             // Render the child's references under this folder node
             this.appendReferences(this.treeItem, folderNoteChild, folderNoteChild.references);
+
+            // If there are sibling children (index note among others), render them too
+            const siblings = this.treeNode.children.filter(c => c !== folderNoteChild);
+            if (siblings.length > 0) {
+                this.appendTreeItemChildren(this.treeItem, siblings);
+            }
         } else {
             this.appendEndNode(this.treeItemSelf, this.treeNode);
 

@@ -9,6 +9,7 @@ export const DEFAULT_SETTINGS: HierarchicalBacklinksSettings = {
   useFrontmatterTitle: false,
   frontmatterTitleProperty: "title",
   hideFolderNote: false,
+  folderNoteIndexName: "",
 };
 
 export class HierarchicalBacklinksSettingTab extends PluginSettingTab {
@@ -79,6 +80,8 @@ export class HierarchicalBacklinksSettingTab extends PluginSettingTab {
       );
     propertyNameSetting.settingEl.toggle(this.plugin.settings.useFrontmatterTitle);
 
+    new Setting(containerEl).setName("Folder notes").setHeading();
+
     new Setting(containerEl)
       .setName("Hide folder notes")
       .setDesc("When a note has the same name as its parent folder, hide the duplicate and make the folder clickable.")
@@ -87,6 +90,21 @@ export class HierarchicalBacklinksSettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.hideFolderNote)
           .onChange(async (value) => {
             this.plugin.settings.hideFolderNote = value;
+            await this.plugin.saveSettings();
+            indexNameSetting.setDisabled(!value);
+          }),
+      );
+
+    const indexNameSetting = new Setting(containerEl)
+      .setName("Index file name")
+      .setDesc("Also treat a file with this name as a folder note regardless of the folder name (e.g. \"overview\" or \"_index\").")
+      .setDisabled(!this.plugin.settings.hideFolderNote)
+      .addText(text =>
+        text
+          .setPlaceholder("overview")
+          .setValue(this.plugin.settings.folderNoteIndexName)
+          .onChange(async (value) => {
+            this.plugin.settings.folderNoteIndexName = value;
             await this.plugin.saveSettings();
           }),
       );

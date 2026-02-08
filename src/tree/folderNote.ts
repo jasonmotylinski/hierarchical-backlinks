@@ -14,3 +14,21 @@ export function getFolderNoteChild(node: TreeNode): TreeNode | null {
 
     return child;
 }
+
+/**
+ * Finds a leaf child whose title matches the configured index name.
+ * Unlike getFolderNoteChild, this works even when the folder has multiple children.
+ * Returns null if indexName is empty or no matching leaf child is found.
+ */
+export function getIndexNoteChild(node: TreeNode, indexName: string): TreeNode | null {
+    if (node.isLeaf) return null;
+    if (!indexName) return null;
+
+    for (const child of node.children) {
+        if (child.isLeaf && child.title === indexName) {
+            return child;
+        }
+    }
+
+    return null;
+}

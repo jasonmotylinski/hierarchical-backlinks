@@ -8,6 +8,7 @@ export interface HierarchicalBacklinksSettings {
   useFrontmatterTitle: boolean;
   frontmatterTitleProperty: string;
   hideFolderNote: boolean;
+  folderNoteIndexName: string;
 }
 
 export type NodeId = string; // Node path used as unique identifier

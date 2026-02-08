@@ -28,6 +28,17 @@ This is how this plugin displays backlinks:
 - Collapsable tree structure allows you to easily focus on what what is most important
 - Clickable links to references
 
+## Settings
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| Hide Context by Default | Next time the plugin is loaded, context will be hidden by default. | Off |
+| Bold File Names | Display file names in bold when they have backlink matches. | On |
+| Use frontmatter property as display name | Display the value of a frontmatter property instead of the file name in the backlinks tree. | Off |
+| Frontmatter property name | The frontmatter property to use as the display name. Only visible when the above setting is enabled. | `title` |
+| Hide folder notes | When a note has the same name as its parent folder, hide the duplicate and make the folder clickable. | Off |
+| Index file name | Also treat a file with this name as a folder note regardless of the folder name (e.g. `overview` or `_index`). Disabled until "Hide folder notes" is enabled. | Empty |
+
 ## Commands
 The following commands are available in the Obsidian Command Palett:
 
