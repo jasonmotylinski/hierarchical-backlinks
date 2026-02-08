@@ -42,10 +42,11 @@ export class TreeNodeView {
         this.treeItem = this.parent.createDiv({ cls: "tree-item" });
         this.treeItemSelf = this.treeItem.createDiv({ cls: "tree-item-self is-clickable backlink-item" });
 
-        // Check for folder note merging: same-name child first, then index name
+        // Check for folder note merging: use index name if configured, otherwise same-name match
         const folderNoteChild = this.settings.hideFolderNote
-            ? (getFolderNoteChild(this.treeNode)
-                ?? getIndexNoteChild(this.treeNode, this.settings.folderNoteIndexName))
+            ? (this.settings.folderNoteIndexName
+                ? getIndexNoteChild(this.treeNode, this.settings.folderNoteIndexName)
+                : getFolderNoteChild(this.treeNode))
             : null;
 
         if (folderNoteChild) {
