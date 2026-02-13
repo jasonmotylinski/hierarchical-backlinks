@@ -175,10 +175,38 @@ export class TreeNodeView {
     }
 
     navigateTo(path: string) {
+        // First try to open as a direct link (for files)
         const firstLink = this.app.metadataCache.getFirstLinkpathDest(path, '');
-
         if (firstLink) {
             this.app.workspace.openLinkText(firstLink.name, firstLink.path);
+            return;
+        }
+
+        // If it's not a direct file, check if this is a folder node with a folder note
+        if (!this.treeNode.isLeaf) {
+            const folderNoteChild = this.settings.hideFolderNote
+                ? (this.settings.folderNoteIndexName
+                    ? getIndexNoteChild(this.treeNode, this.settings.folderNoteIndexName)
+                    : getFolderNoteChild(this.treeNode))
+                : null;
+
+            if (folderNoteChild && folderNoteChild.path) {
+                const folderNoteLink = this.app.metadataCache.getFirstLinkpathDest(folderNoteChild.path, '');
+                if (folderNoteLink) {
+                    this.app.workspace.openLinkText(folderNoteLink.name, folderNoteLink.path);
+                    return;
+                }
+            }
+        }
+
+        // Last resort: try to find any markdown file in this folder
+        const folder = this.app.vault.getFolderByPath(path);
+        if (folder) {
+            const files = folder.children.filter(f => f.constructor.name === 'TFile' && (f as any).extension === 'md');
+            if (files.length > 0) {
+                const file = files[0] as any;
+                this.app.workspace.openLinkText(file.basename, file.path);
+            }
         }
     }
 
