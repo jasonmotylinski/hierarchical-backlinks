@@ -56,6 +56,39 @@ export class File {
         return backlinks;
     }
     
+    private async insertFolderNotesIntoNode(node: TreeNode): Promise<void> {
+        if (node.isLeaf) return;
+
+        // Check if this folder has a corresponding folder note
+        const folderNotePath = `${node.path}/${node.title}.md`;
+        const folderNoteFile = this.app.vault.getFileByPath(folderNotePath);
+
+        if (folderNoteFile && !node.children.some(child => child.path === folderNotePath)) {
+            const [content, cache] = await Promise.all([
+                this.app.vault.cachedRead(folderNoteFile),
+                Promise.resolve(this.app.metadataCache.getFileCache(folderNoteFile)),
+            ]);
+
+            const folderNoteNode = new TreeNode(
+                folderNotePath,
+                content,
+                [], // folder notes without backlinks have no references
+                [],
+                node,
+                true
+            );
+            folderNoteNode.setFrontmatter(cache?.frontmatter as unknown as Record<string, unknown> | undefined);
+            folderNoteNode.setTags(this.extractTags(cache));
+
+            node.children.unshift(folderNoteNode);
+        }
+
+        // Recursively check children
+        for (const child of node.children) {
+            await this.insertFolderNotesIntoNode(child);
+        }
+    }
+
     async getBacklinksHierarchy(): Promise<TreeNode[]> {
         const result: TreeNode[] = [];
         const level: Record<string, any> = { result };
@@ -72,6 +105,11 @@ export class File {
             ]);
 
             this.insertTreeNodesForPath(level, parts, file, content, references);
+        }
+
+        // Add folder notes that don't have direct backlinks but are parents of files with backlinks
+        for (const rootNode of result) {
+            await this.insertFolderNotesIntoNode(rootNode);
         }
 
         return result;
