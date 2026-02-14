@@ -48,7 +48,7 @@ describe("File.getBacklinksHierarchy - Issue #112: Folder Notes Clickability", (
     mockFile = {
       path: "other.md",
       vault: { path: "/" },
-    } as TFile;
+    } as unknown as TFile;
 
     mockApp = {
       vault: {
@@ -90,8 +90,8 @@ describe("File.getBacklinksHierarchy - Issue #112: Folder Notes Clickability", (
           frontmatter: {},
           tags: [],
         }),
-      } as MetadataCache,
-    } as App;
+      } as unknown as MetadataCache,
+    } as unknown as App;
 
     file = new File(mockApp, mockFile);
   });
