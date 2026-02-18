@@ -40,7 +40,11 @@ export class TreeNodeView {
 
     render() {
         this.treeItem = this.parent.createDiv({ cls: "tree-item" });
-        this.treeItemSelf = this.treeItem.createDiv({ cls: "tree-item-self is-clickable backlink-item" });
+        
+        // Determine if this node should be clickable
+        const isClickable = this.isNodeClickable();
+        const clickableClass = isClickable ? "is-clickable" : "";
+        this.treeItemSelf = this.treeItem.createDiv({ cls: `tree-item-self ${clickableClass} backlink-item` });
 
         // Check for folder note merging: use index name if configured, otherwise same-name match
         const folderNoteChild = this.settings.hideFolderNote
@@ -174,6 +178,22 @@ export class TreeNodeView {
 
     }
 
+    isNodeClickable(): boolean {
+        // Leaf nodes (files) are always clickable
+        if (this.treeNode.isLeaf) {
+            return true;
+        }
+
+        // Folder nodes are only clickable if they have a configured folder note
+        const folderNoteChild = this.settings.hideFolderNote
+            ? (this.settings.folderNoteIndexName
+                ? getIndexNoteChild(this.treeNode, this.settings.folderNoteIndexName)
+                : getFolderNoteChild(this.treeNode))
+            : null;
+
+        return folderNoteChild !== null;
+    }
+
     navigateTo(path: string) {
         // First try to open as a direct link (for files)
         const firstLink = this.app.metadataCache.getFirstLinkpathDest(path, '');
@@ -199,15 +219,8 @@ export class TreeNodeView {
             }
         }
 
-        // Last resort: try to find any markdown file in this folder
-        const folder = this.app.vault.getFolderByPath(path);
-        if (folder) {
-            const files = folder.children.filter(f => f.constructor.name === 'TFile' && (f as any).extension === 'md');
-            if (files.length > 0) {
-                const file = files[0] as any;
-                this.app.workspace.openLinkText(file.basename, file.path);
-            }
-        }
+        // If we reach here with no valid destination, do not attempt fallback.
+        // Only folders with configured folder notes should be clickable.
     }
 
     appendReferences(parent: HTMLDivElement, item: TreeNode, references: ContentReference[]) {
