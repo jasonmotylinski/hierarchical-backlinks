@@ -88,6 +88,16 @@ export class TreeNodeView {
             }
         }
 
+        if (!this.treeNode.isLeaf) {
+            this.treeItemSelf.addEventListener("click", () => {
+                if (folderNoteChild) {
+                    this.navigateTo(folderNoteChild.path);
+                } else {
+                    this.toggle();
+                }
+            });
+        }
+
         this.applyNodeViewStateToUI();
     }
 
@@ -157,6 +167,7 @@ export class TreeNodeView {
             this.toggle();
         });
         treeItemInner.addEventListener("click", (e) => {
+            e.stopPropagation();
             this.navigateTo(navigatePath ?? treeNode.path);
         });
     }
@@ -179,19 +190,7 @@ export class TreeNodeView {
     }
 
     isNodeClickable(): boolean {
-        // Leaf nodes (files) are always clickable
-        if (this.treeNode.isLeaf) {
-            return true;
-        }
-
-        // Folder nodes are only clickable if they have a configured folder note
-        const folderNoteChild = this.settings.hideFolderNote
-            ? (this.settings.folderNoteIndexName
-                ? getIndexNoteChild(this.treeNode, this.settings.folderNoteIndexName)
-                : getFolderNoteChild(this.treeNode))
-            : null;
-
-        return folderNoteChild !== null;
+        return true;
     }
 
     navigateTo(path: string) {
