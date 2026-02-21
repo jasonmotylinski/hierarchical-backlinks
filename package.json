@@ -1,6 +1,6 @@
 {
 	"name": "hierarchical-backlinks-plugin",
-	"version": "1.9.2",
+	"version": "1.10.0",
 	"description": "Hierarchical backlinks",
 	"main": "main.js",
 	"scripts": {
