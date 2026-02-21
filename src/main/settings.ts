@@ -84,7 +84,7 @@ export class HierarchicalBacklinksSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Hide folder notes")
-      .setDesc("When a note has the same name as its parent folder, hide the duplicate and make the folder clickable.")
+      .setDesc("Hide folder notes from being displayed in the hierarchy. When a note has the same name as its parent folder (or matches the index file name), it is hidden and the folder becomes clickable instead.")
       .addToggle(toggle =>
         toggle
           .setValue(this.plugin.settings.hideFolderNote)
