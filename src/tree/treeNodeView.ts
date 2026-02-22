@@ -19,6 +19,7 @@ export class TreeNodeView {
     private matchBlock: HTMLDivElement | null = null;
     private viewState: ViewState;
     private settings: HierarchicalBacklinksSettings;
+    private folderNoteChild: TreeNode | null = null;
 
     constructor(
         app: App,
@@ -47,28 +48,28 @@ export class TreeNodeView {
         this.treeItemSelf = this.treeItem.createDiv({ cls: `tree-item-self ${clickableClass} backlink-item` });
 
         // Check for folder note merging: use index name if configured, otherwise same-name match
-        const folderNoteChild = this.settings.hideFolderNote
+        this.folderNoteChild = this.settings.hideFolderNote
             ? (this.settings.folderNoteIndexName
                 ? getIndexNoteChild(this.treeNode, this.settings.folderNoteIndexName)
                 : getFolderNoteChild(this.treeNode))
             : null;
 
-        if (folderNoteChild) {
+        if (this.folderNoteChild) {
             // Merged folder note: render folder name but navigate to the child's file
-            this.appendEndNode(this.treeItemSelf, this.treeNode, folderNoteChild.path, folderNoteChild);
+            this.appendEndNode(this.treeItemSelf, this.treeNode, this.folderNoteChild.path, this.folderNoteChild);
 
             // Show the reference count from the child
             const treeItemFlair = this.treeItemSelf.createDiv({ cls: "tree-item-flair-outer" }).createEl("span", { cls: "tree-item-flair" });
-            const total = folderNoteChild.references.reduce((accumulator: number, curr) => {
+            const total = this.folderNoteChild.references.reduce((accumulator: number, curr) => {
                 return accumulator += curr.content.length + curr.properties.length;
             }, 0);
             treeItemFlair.setText(total.toString());
 
             // Render the child's references under this folder node
-            this.appendReferences(this.treeItem, folderNoteChild, folderNoteChild.references);
+            this.appendReferences(this.treeItem, this.folderNoteChild, this.folderNoteChild.references);
 
             // If there are sibling children (index note among others), render them too
-            const siblings = this.treeNode.children.filter(c => c !== folderNoteChild);
+            const siblings = this.treeNode.children.filter(c => c !== this.folderNoteChild);
             if (siblings.length > 0) {
                 this.appendTreeItemChildren(this.treeItem, siblings);
             }
@@ -90,8 +91,8 @@ export class TreeNodeView {
 
         if (!this.treeNode.isLeaf) {
             this.treeItemSelf.addEventListener("click", () => {
-                if (folderNoteChild) {
-                    this.navigateTo(folderNoteChild.path);
+                if (this.folderNoteChild) {
+                    this.navigateTo(this.folderNoteChild.path);
                 } else {
                     this.toggle();
                 }
