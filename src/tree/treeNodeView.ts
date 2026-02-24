@@ -194,8 +194,18 @@ export class TreeNodeView {
     }
 
     navigateTo(path: string) {
-        // First try to open as a direct link (for files)
-        const firstLink = this.app.metadataCache.getFirstLinkpathDest(path, '');
+        // Try to open as a direct file path first (handles .md files directly)
+        if (path.endsWith('.md')) {
+            const file = this.app.vault.getFileByPath(path);
+            if (file) {
+                this.app.workspace.openLinkText(file.basename, file.path);
+                return;
+            }
+        }
+
+        // Try to open as a link (without extension)
+        const linkPath = path.endsWith('.md') ? path.slice(0, -3) : path;
+        const firstLink = this.app.metadataCache.getFirstLinkpathDest(linkPath, '');
         if (firstLink) {
             this.app.workspace.openLinkText(firstLink.name, firstLink.path);
             return;
@@ -210,11 +220,9 @@ export class TreeNodeView {
                 : null;
 
             if (folderNoteChild && folderNoteChild.path) {
-                const folderNoteLink = this.app.metadataCache.getFirstLinkpathDest(folderNoteChild.path, '');
-                if (folderNoteLink) {
-                    this.app.workspace.openLinkText(folderNoteLink.name, folderNoteLink.path);
-                    return;
-                }
+                // Recursively try to navigate to the folder note
+                this.navigateTo(folderNoteChild.path);
+                return;
             }
         }
 
