@@ -90,7 +90,13 @@ export class TreeNodeView {
         }
 
         if (!this.treeNode.isLeaf) {
-            this.treeItemSelf.addEventListener("click", () => {
+            this.treeItemSelf.addEventListener("click", (e: MouseEvent) => {
+                // Only handle clicks that aren't on interactive children (icon, etc)
+                const target = e.target as HTMLElement;
+                if (target.classList.contains("collapse-icon") || target.classList.contains("tree-item-inner")) {
+                    return; // Let other handlers manage these clicks
+                }
+                
                 if (this.folderNoteChild) {
                     this.navigateTo(this.folderNoteChild.path);
                 } else {
@@ -167,10 +173,19 @@ export class TreeNodeView {
             }
             this.toggle();
         });
+        
+        // Attach click handler to navigate or toggle based on the node type and configuration
         treeItemInner.addEventListener("click", (e) => {
             e.stopPropagation();
-            this.navigateTo(navigatePath ?? treeNode.path);
+            const pathToNavigate = navigatePath ?? treeNode.path;
+            dbgTNV("treeItemInner clicked: navigating to", pathToNavigate);
+            this.navigateTo(pathToNavigate);
         });
+        
+        // For leaf nodes, ensure the cursor indicates clickability
+        if (treeNode.isLeaf || navigatePath) {
+            treeItemInner.style.cursor = "pointer";
+        }
     }
 
     appendTreeItemChildren(treeItem: HTMLDivElement, children: TreeNode[]) {
@@ -195,21 +210,35 @@ export class TreeNodeView {
     }
 
     navigateTo(path: string) {
+        if (!path) {
+            dbgTNV("navigateTo: empty path provided");
+            return;
+        }
+
+        // Normalize path: ensure it uses forward slashes
+        const normalizedPath = path.replace(/\\/g, '/');
+
         // Try to open as a direct file path first (handles .md files directly)
-        if (path.endsWith('.md')) {
-            const file = this.app.vault.getFileByPath(path);
+        if (normalizedPath.endsWith('.md')) {
+            const file = this.app.vault.getFileByPath(normalizedPath);
             if (file) {
+                dbgTNV("navigateTo: opening .md file", normalizedPath);
                 this.app.workspace.openLinkText(file.basename, file.path);
                 return;
+            } else {
+                dbgTNV("navigateTo: .md file not found in vault", normalizedPath);
             }
         }
 
         // Try to open as a link (without extension)
-        const linkPath = path.endsWith('.md') ? path.slice(0, -3) : path;
+        const linkPath = normalizedPath.endsWith('.md') ? normalizedPath.slice(0, -3) : normalizedPath;
         const firstLink = this.app.metadataCache.getFirstLinkpathDest(linkPath, '');
         if (firstLink) {
+            dbgTNV("navigateTo: opening via metadata cache", linkPath, "->", firstLink.path);
             this.app.workspace.openLinkText(firstLink.name, firstLink.path);
             return;
+        } else {
+            dbgTNV("navigateTo: link not found in metadata cache", linkPath);
         }
 
         // If it's not a direct file, check if this is a folder node with a folder note
@@ -221,14 +250,15 @@ export class TreeNodeView {
                 : null;
 
             if (folderNoteChild && folderNoteChild.path) {
+                dbgTNV("navigateTo: recursing into folder note", folderNoteChild.path);
                 // Recursively try to navigate to the folder note
                 this.navigateTo(folderNoteChild.path);
                 return;
             }
         }
 
-        // If we reach here with no valid destination, do not attempt fallback.
-        // Only folders with configured folder notes should be clickable.
+        // If we reach here with no valid destination, log it for debugging
+        dbgTNV("navigateTo: unable to navigate to path", path);
     }
 
     appendReferences(parent: HTMLDivElement, item: TreeNode, references: ContentReference[]) {
