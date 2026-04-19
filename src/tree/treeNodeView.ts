@@ -307,8 +307,8 @@ export class TreeNodeView {
         const state = this.getOrCreateNodeViewState();
 
 
-        if (this.treeNode.isLeaf) {
-            dbgTNV("ContentHiddenToggleOn", this.treeNode.title, "| isLeaf:", true, "→ Collapsing");
+        if (this.treeNode.isLeaf || this.folderNoteChild !== null) {
+            dbgTNV("ContentHiddenToggleOn", this.treeNode.title, "| isLeaf:", this.treeNode.isLeaf, "| folderNote:", !!this.folderNoteChild, "→ Collapsing");
             state.isCollapsed = true;
         } else {
             dbgTNV("ContentHiddenToggleOn", this.treeNode.title, "| isLeaf:", false, "→ Skipping collapse");
@@ -327,17 +327,17 @@ export class TreeNodeView {
         const state = this.getOrCreateNodeViewState();
 
 
-        if (this.treeNode.isLeaf) {
+        if (this.treeNode.isLeaf || this.folderNoteChild !== null) {
             const parent = this.treeNode.parent;
             const parentCollapsed = parent ? (this.viewState.nodeStates.get(parent.path)?.isCollapsed ?? false) : false;
 
-            dbgTNV("ContentHiddenToggleOff", this.treeNode.title, "| isLeaf:", true, "| hasParent:", !!parent, "| parent.isCollapsed:", parentCollapsed);
+            dbgTNV("ContentHiddenToggleOff", this.treeNode.title, "| isLeaf:", this.treeNode.isLeaf, "| folderNote:", !!this.folderNoteChild, "| hasParent:", !!parent, "| parent.isCollapsed:", parentCollapsed);
 
             if (!parent || !parentCollapsed) {
                 state.isCollapsed = false;
-                dbgTNV("ContentHiddenToggleOff → Expanding leaf node:", this.treeNode.title);
+                dbgTNV("ContentHiddenToggleOff → Expanding node:", this.treeNode.title);
             } else {
-                dbgTNV("ContentHiddenToggleOff → Keeping leaf node collapsed due to collapsed parent:", this.treeNode.title);
+                dbgTNV("ContentHiddenToggleOff → Keeping node collapsed due to collapsed parent:", this.treeNode.title);
             }
         }
 
