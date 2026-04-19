@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "ignoreDeprecations": "6.0",
     "baseUrl": ".",
     "inlineSourceMap": true,
     "inlineSources": true,
@@ -7,6 +8,7 @@
     "target": "ES6",
     "allowJs": true,
     "noImplicitAny": true,
+    "strictPropertyInitialization": false,
     "moduleResolution": "node",
     "importHelpers": true,
     "isolatedModules": true,
