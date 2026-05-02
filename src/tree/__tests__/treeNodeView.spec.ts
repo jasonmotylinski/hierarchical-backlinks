@@ -82,4 +82,17 @@ describe("TreeNodeView.contentHiddenToggleOff", () => {
 
         expect(viewState.nodeStates.get("Projects")?.isCollapsed).toBe(false);
     });
+
+    it("expands a leaf even when its parent folder is collapsed (issue #147)", () => {
+        const leaf = makeNode("Folder/note.md", true);
+        const folder = makeNode("Folder", false, [leaf]);
+        const viewState = makeViewState();
+        viewState.nodeStates.set("Folder", { isCollapsed: true, isVisible: true });
+        viewState.nodeStates.set("Folder/note.md", { isCollapsed: true, isVisible: true });
+        const view = makeView(leaf, viewState);
+
+        (view as any).contentHiddenToggleOff();
+
+        expect(viewState.nodeStates.get("Folder/note.md")?.isCollapsed).toBe(false);
+    });
 });

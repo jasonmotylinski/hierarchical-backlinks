@@ -328,17 +328,8 @@ export class TreeNodeView {
 
 
         if (this.treeNode.isLeaf || this.folderNoteChild !== null) {
-            const parent = this.treeNode.parent;
-            const parentCollapsed = parent ? (this.viewState.nodeStates.get(parent.path)?.isCollapsed ?? false) : false;
-
-            dbgTNV("ContentHiddenToggleOff", this.treeNode.title, "| isLeaf:", this.treeNode.isLeaf, "| folderNote:", !!this.folderNoteChild, "| hasParent:", !!parent, "| parent.isCollapsed:", parentCollapsed);
-
-            if (!parent || !parentCollapsed) {
-                state.isCollapsed = false;
-                dbgTNV("ContentHiddenToggleOff → Expanding node:", this.treeNode.title);
-            } else {
-                dbgTNV("ContentHiddenToggleOff → Keeping node collapsed due to collapsed parent:", this.treeNode.title);
-            }
+            state.isCollapsed = false;
+            dbgTNV("ContentHiddenToggleOff → Expanding node:", this.treeNode.title);
         }
 
         this.treeNodeViewChildren.forEach(child => child.contentHiddenToggleOff());
