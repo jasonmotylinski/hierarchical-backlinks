@@ -1,6 +1,7 @@
 import { App, SearchMatchPart } from "obsidian";
 
 import { ContentReference } from "../types";
+import { offsetToPosition } from "./offsetToPosition";
 
 export class SearchResultFileMatchView {
     private app: App;
@@ -50,7 +51,7 @@ export class SearchResultFileMatchView {
 			}
 
 			for(let i=0; i < sorted.length; i++){
-                
+
                 const currentBoundary=this.findLineBoundaries(this.content, sorted[i], undefined);
                 matchesInLine.push(sorted[i]);
 
@@ -61,10 +62,27 @@ export class SearchResultFileMatchView {
 
                 const matchDiv=this.parent.createDiv({cls: "search-result-file-match"});
                 this.highlightMatches(matchDiv, this.content, (currentBoundary[0] as number), (currentBoundary[1] as number), matchesInLine);
+
+                const firstMatchOffset = matchesInLine[0][0];
+                this.attachMatchNavigation(matchDiv, firstMatchOffset);
+
                 matchesInLine=[];
             }
         });
 
+    }
+
+    private attachMatchNavigation(matchDiv: HTMLDivElement, offset: number) {
+        matchDiv.style.cursor = "pointer";
+        matchDiv.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const dest = this.app.metadataCache.getFirstLinkpathDest(this.references[0].path, "");
+            if (!dest) return;
+            const pos = offsetToPosition(this.content, offset);
+            this.app.workspace.openLinkText(dest.name, dest.path, false, {
+                eState: { line: pos.line, ch: pos.col },
+            });
+        });
     }
 
     findLineBoundaries(text: string, indices: [number, number], maxDistance: number | undefined) {
