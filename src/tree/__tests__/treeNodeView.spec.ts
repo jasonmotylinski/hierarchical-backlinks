@@ -95,4 +95,22 @@ describe("TreeNodeView.contentHiddenToggleOff", () => {
 
         expect(viewState.nodeStates.get("Folder/note.md")?.isCollapsed).toBe(false);
     });
+
+    it("expands a flattened leaf whose original folder-note parent is collapsed (issue #146)", () => {
+        // Reproduces: 1) Collapse Results (collapses folder-note + leaf)
+        //             2) Flatten Tree (rebuilds with leaves as roots; parent ref persists)
+        //             3) Toggle Collapse Results off — leaf must expand
+        const folderNoteFile = makeNode("Folder/Folder.md", true);
+        const folder = makeNode("Folder", false, [folderNoteFile]);
+        const viewState = makeViewState();
+        // After step 1, the folder-note display node is marked collapsed
+        viewState.nodeStates.set("Folder", { isCollapsed: true, isVisible: true });
+        viewState.nodeStates.set("Folder/Folder.md", { isCollapsed: true, isVisible: true });
+        // Flattened render keeps `parent` reference but does not include the folder view
+        const view = makeView(folderNoteFile, viewState);
+
+        (view as any).contentHiddenToggleOff();
+
+        expect(viewState.nodeStates.get("Folder/Folder.md")?.isCollapsed).toBe(false);
+    });
 });
