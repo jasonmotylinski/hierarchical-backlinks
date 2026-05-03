@@ -1,15 +1,17 @@
 import { App, TFile, SearchMatchPart, CachedMetadata } from "obsidian";
-import { BacklinkReference, ContentReference } from "../types";
+import { BacklinkReference, ContentReference, HierarchicalBacklinksSettings } from "../types";
 import { TreeNode } from "../tree/treeNode";
 
 
 export class File {
     app :App;
 	file: TFile;
+	settings?: HierarchicalBacklinksSettings;
 
-    constructor(app :App, file :TFile){
+    constructor(app :App, file :TFile, settings?: HierarchicalBacklinksSettings){
         this.app=app;
 		this.file=file;
+		this.settings=settings;
     }
 
     private insertTreeNodesForPath(
@@ -59,8 +61,12 @@ export class File {
     private async insertFolderNotesIntoNode(node: TreeNode): Promise<void> {
         if (node.isLeaf) return;
 
-        // Check if this folder has a corresponding folder note
-        const folderNotePath = `${node.path}/${node.title}.md`;
+        // Mirror the render-layer strategy: indexName takes precedence when configured,
+        // otherwise fall back to the same-name match.
+        const indexName = this.settings?.folderNoteIndexName;
+        const folderNotePath = indexName
+            ? `${node.path}/${indexName}.md`
+            : `${node.path}/${node.title}.md`;
         const folderNoteFile = this.app.vault.getFileByPath(folderNotePath);
 
         if (folderNoteFile && !node.children.some(child => child.path === folderNotePath)) {

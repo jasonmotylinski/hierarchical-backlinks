@@ -289,7 +289,7 @@ export class HierarchicalBacklinksView extends ItemView {
         } else {
             dbgHB('initialize(): UNLOCKED — globals => sortDescending =', this.sortDescending, ', isFlattened =', this.isFlattened); this.viewState = { nodeStates: new Map<string, NodeViewState>(), isLocked: false };
 
-            const file = new File(this.app, activeFile);
+            const file = new File(this.app, activeFile, this.plugin.settings);
             this.originalHierarchy = await file.getBacklinksHierarchy();
 
             this.sortDescending = uiState.sortCollapsed ?? false;

@@ -2,7 +2,7 @@ import { describe, expect, it, beforeEach } from "vitest";
 
 import { File } from "../file";
 import type { App, TFile, MetadataCache } from "obsidian";
-import type { BacklinkReference } from "../../types";
+import type { BacklinkReference, HierarchicalBacklinksSettings } from "../../types";
 
 describe("File.getReferences", () => {
   it("preserves full frontmatter key paths", async () => {
@@ -140,5 +140,120 @@ describe("File.getBacklinksHierarchy - Issue #112: Folder Notes Clickability", (
       (n) => n.path === "Project/tasks/task1.md"
     );
     expect(task1Node).toBeDefined();
+  });
+});
+
+/**
+ * Test for Issue #144: Folder note via folderNoteIndexName not injected
+ *
+ * Scenario:
+ * - Untitled/Overview.md exists (folder note for Untitled folder via indexName)
+ * - Overview.md has NO direct backlinks
+ * - Untitled/Untitled 2/Overview.md HAS backlinks
+ * - Settings: folderNoteIndexName = "Overview"
+ *
+ * Expected behavior:
+ * - Untitled folder should have Overview.md injected as a child so the
+ *   render layer can recognize it as a folder note and route clicks to it.
+ *
+ * Bug before fix:
+ * - insertFolderNotesIntoNode only checks `${folderName}.md` and ignores
+ *   the configured folderNoteIndexName, so Untitled/Overview.md is never
+ *   injected and the Untitled folder row is unclickable.
+ */
+describe("File.getBacklinksHierarchy - Issue #144: indexName folder notes", () => {
+  let mockApp: any;
+  let mockFile: any;
+
+  const settings: HierarchicalBacklinksSettings = {
+    toggleLeafNodes: true,
+    boldFileNames: false,
+    useFrontmatterTitle: true,
+    frontmatterTitleProperty: "title",
+    hideFolderNote: true,
+    folderNoteIndexName: "Overview",
+  };
+
+  beforeEach(() => {
+    mockFile = {
+      path: "Untitled.md",
+      vault: { path: "/" },
+    } as unknown as TFile;
+
+    mockApp = {
+      vault: {
+        getFileByPath: (path: string) => {
+          const mockFiles: Record<string, any> = {
+            "Untitled/Overview.md": {
+              path: "Untitled/Overview.md",
+              name: "Overview.md",
+            },
+            "Untitled/Untitled 2/Overview.md": {
+              path: "Untitled/Untitled 2/Overview.md",
+              name: "Overview.md",
+            },
+          };
+          return mockFiles[path] || null;
+        },
+        cachedRead: async (file: TFile) => `Content of ${file.path}`,
+      },
+      metadataCache: {
+        getBacklinksForFile: () => ({
+          data: new Map([
+            [
+              "Untitled/Untitled 2/Overview.md",
+              [
+                {
+                  key: "link",
+                  original: "[[Untitled]]",
+                  position: { start: { offset: 0 }, end: { offset: 12 } },
+                } as BacklinkReference,
+              ],
+            ],
+          ]),
+        }),
+        getFileCache: () => ({ frontmatter: {}, tags: [] }),
+      } as unknown as MetadataCache,
+    } as unknown as App;
+  });
+
+  it("injects the indexName folder note as a child of its parent folder", async () => {
+    const file = new File(mockApp, mockFile, settings);
+
+    const hierarchy = await file.getBacklinksHierarchy();
+
+    const untitledFolder = hierarchy.find((n) => n.path === "Untitled");
+    expect(untitledFolder).toBeDefined();
+
+    const overview = untitledFolder?.children.find(
+      (c) => c.path === "Untitled/Overview.md"
+    );
+    expect(overview).toBeDefined();
+    expect(overview?.isLeaf).toBe(true);
+    expect(overview?.title).toBe("Overview");
+  });
+
+  it("falls back to same-name strategy when indexName is empty", async () => {
+    const noIndexSettings: HierarchicalBacklinksSettings = {
+      ...settings,
+      folderNoteIndexName: "",
+    };
+    // Add a same-name folder note so we can verify the fallback path
+    const originalGetByPath = mockApp.vault.getFileByPath;
+    mockApp.vault.getFileByPath = (path: string) => {
+      if (path === "Untitled/Untitled.md") {
+        return { path, name: "Untitled.md" };
+      }
+      return originalGetByPath(path);
+    };
+
+    const file = new File(mockApp, mockFile, noIndexSettings);
+    const hierarchy = await file.getBacklinksHierarchy();
+
+    const untitledFolder = hierarchy.find((n) => n.path === "Untitled");
+    const sameName = untitledFolder?.children.find(
+      (c) => c.path === "Untitled/Untitled.md"
+    );
+    expect(sameName).toBeDefined();
   });
 });
