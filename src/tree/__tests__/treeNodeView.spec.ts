@@ -1,6 +1,7 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { TreeNodeView } from "../treeNodeView";
 import { TreeNode } from "../treeNode";
+import { uiState } from "../../ui/uiState";
 import type { ViewState, HierarchicalBacklinksSettings } from "../../types";
 
 vi.mock("obsidian", () => ({
@@ -30,6 +31,87 @@ function makeView(node: TreeNode, viewState: ViewState): TreeNodeView {
     vi.spyOn(view as any, "applyNodeViewStateToUI").mockImplementation(() => {});
     return view;
 }
+
+/**
+ * Issue #145: `Collapse Tree` should only target folders, not results.
+ *
+ * "Collapse tree" and "Collapse results" are separate buttons. Collapsing the
+ * tree must collapse folder rows only; leaf rows (whose collapse state hides
+ * the result match block) keep following the "Collapse results" toggle.
+ */
+describe("TreeNodeView.listToggleOn (issue #145)", () => {
+    afterEach(() => {
+        uiState.listCollapsed = false;
+        uiState.contentCollapsed = false;
+    });
+
+    it("collapses folder nodes", () => {
+        const leaf = makeNode("Folder/note.md", true);
+        const folder = makeNode("Folder", false, [leaf]);
+        const viewState = makeViewState();
+        const view = makeView(folder, viewState);
+
+        view.listToggleOn();
+
+        expect(viewState.nodeStates.get("Folder")?.isCollapsed).toBe(true);
+    });
+
+    it("leaves results expanded when 'Collapse results' is off", () => {
+        uiState.contentCollapsed = false;
+        const leaf = makeNode("Folder/note.md", true);
+        const folder = makeNode("Folder", false, [leaf]);
+        const viewState = makeViewState();
+        const folderView = makeView(folder, viewState);
+        const leafView = makeView(leaf, viewState);
+        (folderView as any).treeNodeViewChildren = [leafView];
+
+        folderView.listToggleOn();
+
+        // Folder collapses, but the leaf (its results) does not
+        expect(viewState.nodeStates.get("Folder")?.isCollapsed).toBe(true);
+        expect(viewState.nodeStates.get("Folder/note.md")?.isCollapsed).toBe(false);
+    });
+
+    it("collapses results when 'Collapse results' is on", () => {
+        uiState.contentCollapsed = true;
+        const leaf = makeNode("Folder/note.md", true);
+        const viewState = makeViewState();
+        const view = makeView(leaf, viewState);
+
+        view.listToggleOn();
+
+        expect(viewState.nodeStates.get("Folder/note.md")?.isCollapsed).toBe(true);
+    });
+
+    it("does nothing to flattened leaves when 'Collapse results' is off", () => {
+        // In flatten mode every row is a leaf; "Collapse tree" must not hide
+        // their match blocks (the reporter's flatten-mode scenario).
+        uiState.contentCollapsed = false;
+        const leaf = makeNode("Folder/note.md", true);
+        const viewState = makeViewState();
+        const view = makeView(leaf, viewState);
+
+        view.listToggleOn();
+
+        expect(viewState.nodeStates.get("Folder/note.md")?.isCollapsed).toBe(false);
+    });
+
+    it("stays symmetric with listToggleOff", () => {
+        uiState.contentCollapsed = false;
+        const leaf = makeNode("Folder/note.md", true);
+        const folder = makeNode("Folder", false, [leaf]);
+        const viewState = makeViewState();
+        const folderView = makeView(folder, viewState);
+        const leafView = makeView(leaf, viewState);
+        (folderView as any).treeNodeViewChildren = [leafView];
+
+        folderView.listToggleOn();
+        folderView.listToggleOff();
+
+        expect(viewState.nodeStates.get("Folder")?.isCollapsed).toBe(false);
+        expect(viewState.nodeStates.get("Folder/note.md")?.isCollapsed).toBe(false);
+    });
+});
 
 describe("TreeNodeView.contentHiddenToggleOn", () => {
     it("collapses a regular leaf node", () => {

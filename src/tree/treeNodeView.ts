@@ -89,21 +89,24 @@ export class TreeNodeView {
             }
         }
 
-        if (!this.treeNode.isLeaf) {
-            this.treeItemSelf.addEventListener("click", (e: MouseEvent) => {
-                // Only handle clicks that aren't on interactive children (icon, etc)
-                const target = e.target as HTMLElement;
-                if (target.classList.contains("collapse-icon") || target.classList.contains("tree-item-inner")) {
-                    return; // Let other handlers manage these clicks
-                }
-                
-                if (this.folderNoteChild) {
-                    this.navigateTo(this.folderNoteChild.path);
-                } else {
-                    this.toggle();
-                }
-            });
-        }
+        this.treeItemSelf.addEventListener("click", (e: MouseEvent) => {
+            // Only handle clicks that aren't on interactive children (icon, etc)
+            const target = e.target as HTMLElement;
+            if (target.classList.contains("collapse-icon") || target.classList.contains("tree-item-inner")) {
+                return; // Let other handlers manage these clicks
+            }
+
+            if (this.folderNoteChild) {
+                this.navigateTo(this.folderNoteChild.path);
+            } else if (this.treeNode.isLeaf) {
+                // Leaf rows (e.g. every row in flatten mode) navigate on a
+                // whole-row click, matching merged folder-note rows in
+                // hierarchy mode (issue #155).
+                this.navigateTo(this.treeNode.path);
+            } else {
+                this.toggle();
+            }
+        });
 
         this.applyNodeViewStateToUI();
     }
@@ -268,11 +271,18 @@ export class TreeNodeView {
     }
 
     listToggleOn() {
-        // Always collapse the node when toggling on.
-        // Collapse this node and all descendants; also mark the list as collapsed
+        // Collapse the tree structure only: folders collapse, while leaf rows
+        // (the results) keep following the "Collapse results" toggle so that
+        // expanding a folder later shows results in their expected state
+        // (issue #145). Mirrors listToggleOff.
         uiState.listCollapsed = true;
         const state = this.getOrCreateNodeViewState();
-        state.isCollapsed = true;
+
+        if (this.treeNode.isLeaf) {
+            state.isCollapsed = uiState.contentCollapsed;
+        } else {
+            state.isCollapsed = true;
+        }
 
         this.treeNodeViewChildren.forEach(child => child.listToggleOn());
 

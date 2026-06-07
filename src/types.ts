@@ -23,6 +23,9 @@ export interface TreeNodeData {
   parent: TreeNode | null;
   isLeaf: boolean;
   tags?: string[];
+  // True for folder notes injected into the tree solely to make folder rows
+  // clickable (they have no backlinks of their own). Excluded from flatten.
+  isInjectedFolderNote?: boolean;
 }
 
 export interface NodeViewState {

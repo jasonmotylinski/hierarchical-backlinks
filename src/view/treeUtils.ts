@@ -28,11 +28,14 @@ export function deepSortHierarchy(models: TreeNode[], descending: boolean): void
 /**
  * Build a flat list of leaf nodes from a hierarchical tree.
  * Preserves node identity (path) so viewState (isVisible/isCollapsed) continues to apply.
+ * Injected folder notes (added only to make folder rows clickable in hierarchy
+ * mode) are excluded: flatten should show actual backlinks only (issue #154).
  */
 export function buildFlattenedHierarchy(hierarchy: TreeNode[]): TreeNode[] {
     const leaves: TreeNode[] = [];
 
     const walk = (node: TreeNode) => {
+        if (node.isLeaf && node.isInjectedFolderNote) return;
         if (node.isLeaf) {
             // clone the node but drop children to ensure it's rendered as a root leaf
             leaves.push({

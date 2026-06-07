@@ -233,6 +233,28 @@ describe("File.getBacklinksHierarchy - Issue #144: indexName folder notes", () =
     expect(overview?.title).toBe("Overview");
   });
 
+  it("marks injected folder notes so flatten mode can exclude them (issue #154)", async () => {
+    const file = new File(mockApp, mockFile, settings);
+
+    const hierarchy = await file.getBacklinksHierarchy();
+
+    const untitledFolder = hierarchy.find((n) => n.path === "Untitled");
+    const injected = untitledFolder?.children.find(
+      (c) => c.path === "Untitled/Overview.md"
+    );
+    expect(injected?.isInjectedFolderNote).toBe(true);
+
+    // The actual backlink must NOT be marked
+    const inner = untitledFolder?.children.find(
+      (c) => c.path === "Untitled/Untitled 2"
+    );
+    const realBacklink = inner?.children.find(
+      (c) => c.path === "Untitled/Untitled 2/Overview.md"
+    );
+    expect(realBacklink).toBeDefined();
+    expect(realBacklink?.isInjectedFolderNote).toBeUndefined();
+  });
+
   it("falls back to same-name strategy when indexName is empty", async () => {
     const noIndexSettings: HierarchicalBacklinksSettings = {
       ...settings,

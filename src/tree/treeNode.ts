@@ -12,6 +12,9 @@ export class TreeNode implements TreeNodeData {
   frontmatter?: Record<string, unknown>;
   // Cached tag names (from inline tags + frontmatter)
   tags: string[] = [];
+  // Set when this folder note was injected (no backlinks of its own) just to
+  // make its parent folder row clickable; see File.insertFolderNotesIntoNode.
+  isInjectedFolderNote?: boolean;
 
   static contentHidden: boolean = false;
 

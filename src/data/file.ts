@@ -85,6 +85,9 @@ export class File {
             );
             folderNoteNode.setFrontmatter(cache?.frontmatter as unknown as Record<string, unknown> | undefined);
             folderNoteNode.setTags(this.extractTags(cache));
+            // Mark as injected so flatten mode can exclude it (issue #154):
+            // it exists only to make the folder row clickable, not as a backlink.
+            folderNoteNode.isInjectedFolderNote = true;
 
             node.children.unshift(folderNoteNode);
         }

@@ -12,6 +12,28 @@ npx vitest           # Run all tests
 npx vitest run src/search/__tests__/parser.spec.ts  # Run a single test file
 ```
 
+## Testing
+
+### Unit tests (Vitest)
+
+- Tests live in `__tests__/` folders next to the code. The `obsidian` package
+  ships types only, so `vitest.config.ts` aliases it to `src/__mocks__/obsidian.ts`;
+  add to that stub when code under test imports a new `obsidian` runtime value.
+- DOM wiring (e.g. `TreeNodeView` click handlers) is tested under
+  `// @vitest-environment jsdom`, polyfilling the `createDiv`/`createEl`/`setAttr`/
+  `setText`/`toggleClass` helpers Obsidian adds to `HTMLElement` — see
+  `src/tree/__tests__/treeNodeViewClick.spec.ts`.
+
+### Manual interactive testing in the vault
+
+Most bugs here are about *interaction* (clicks, navbar toggles, flatten/lock
+state), which unit tests can't fully cover. The vault containing this repo has
+a dedicated scenario folder, `HBTest/`, whose `HB Bug Tests.md` note contains
+step-by-step verification instructions (folder notes via `_index`, an injected
+ancestor folder note, plain backlinks). Open that note, open the Hierarchical
+backlinks panel, and follow the steps. Add new scenario notes there when fixing
+interaction bugs, and convert findings into unit tests where possible.
+
 ## Releasing
 
 To release a new version (e.g., 1.4.0):
