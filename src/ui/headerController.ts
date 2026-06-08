@@ -88,6 +88,10 @@ export class HeaderController {
     nav.flattenCollapseButton.setCollapsed(uiState.flattenCollapsed);
     nav.lockCollapseButton.setCollapsed(!!initialLocked);
 
+    // "Collapse tree" only affects the hierarchy, so it's redundant in flatten
+    // mode (every row is a leaf). Hide it while flattened (issue #168).
+    this.updateListButtonVisibility(uiState.flattenCollapsed);
+
     // locked visuals
     this.applyLockVisuals(initialLocked);
 
@@ -110,6 +114,7 @@ export class HeaderController {
     nav.flattenCollapseButton.on("collapse-click", () => {
       const on = nav.flattenCollapseButton.isCollapsed();
       uiState.flattenCollapsed = on;
+      this.updateListButtonVisibility(on);
       this.callbacks?.onFlattenToggle(on);
     });
     nav.lockCollapseButton.on("collapse-click", () => {
@@ -155,7 +160,16 @@ export class HeaderController {
   /** UI setters (navbar button state & lock visuals) */
   setListActive(on: boolean) { this.nav?.listCollapseButton?.setCollapsed(on); }
   setContentActive(on: boolean) { this.nav?.contentCollapseButton?.setCollapsed(on); }
-  setFlattenActive(on: boolean) { this.nav?.flattenCollapseButton?.setCollapsed(on); }
+  setFlattenActive(on: boolean) {
+    this.nav?.flattenCollapseButton?.setCollapsed(on);
+    this.updateListButtonVisibility(on);
+  }
+
+  /** Hide "Collapse tree" while flattened — it's a no-op there (issue #168). */
+  private updateListButtonVisibility(flattened: boolean) {
+    const btnEl = this.nav?.listCollapseButton?.getElement();
+    if (btnEl) btnEl.style.display = flattened ? "none" : "";
+  }
   setSortActive(on: boolean) { this.nav?.sortCollapseButton?.setCollapsed(on); }
 
   setLockActive(on: boolean) {

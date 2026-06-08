@@ -122,6 +122,27 @@ describe("TreeNodeView row clicks (issue #155)", () => {
         expect(openLinkText).toHaveBeenCalledWith("Projects", "Projects/Projects.md");
     });
 
+    it("keeps folder-note results rendered after Collapse Tree (issue #167)", () => {
+        // A merged folder note whose folder note has its own backlinks. Its
+        // inline results render as a .search-result-file-matches block. Pressing
+        // "Collapse Tree" must NOT hide that block (it hid it before #167).
+        const folderNote = new TreeNode("Projects/Projects.md", "content", [
+            { content: [], properties: [] } as any,
+        ], [], null, true);
+        const folder = new TreeNode("Projects", "", [], [folderNote], null, false);
+        const viewState = makeViewState();
+        const parent = document.createElement("div");
+        const view = new TreeNodeView(makeApp(vi.fn()), parent as HTMLDivElement, folder, viewState, settings);
+        view.render();
+
+        const matchBlock = parent.querySelector(".search-result-file-matches") as HTMLElement;
+        expect(matchBlock).toBeTruthy();
+
+        view.listToggleOn();
+
+        expect(matchBlock.style.display).not.toBe("none");
+    });
+
     it("toggles (not navigates) on row click of a plain folder", () => {
         const openLinkText = vi.fn();
         const leafA = makeNode("Folder/a.md", true);

@@ -5,7 +5,7 @@ import { ViewState, NodeViewState, LockedTreeSnapshot } from "../types";
 import { cloneHierarchy } from "./treeUtils";
 
 /** Shape of a lightweight snapshot for per-node UI state (collapsed/visible). */
-export type NodeStateSnapshot = Map<string, { isCollapsed: boolean; isVisible: boolean }>;
+export type NodeStateSnapshot = Map<string, { isCollapsed: boolean; isVisible: boolean; isContentCollapsed: boolean }>;
 
 /**
  * Ensure a ViewState instance exists and return it. If `base` is provided,
@@ -22,7 +22,7 @@ export function ensureViewState(base?: ViewState | null): ViewState {
 export function getOrCreateNodeViewState(viewState: ViewState, nodeId: string): NodeViewState {
   let st = viewState.nodeStates.get(nodeId);
   if (!st) {
-    st = { isCollapsed: false, isVisible: true };
+    st = { isCollapsed: false, isVisible: true, isContentCollapsed: false };
     viewState.nodeStates.set(nodeId, st);
   }
   return st;
@@ -37,6 +37,7 @@ export function snapshotNodeStates(viewState: ViewState): NodeStateSnapshot {
     snap.set(path, {
       isCollapsed: !!st.isCollapsed,
       isVisible: st.isVisible !== false,
+      isContentCollapsed: !!st.isContentCollapsed,
     });
   }
   return snap;
@@ -54,6 +55,7 @@ export function restoreNodeStatesFrom(
     viewState.nodeStates.set(path, {
       isCollapsed: !!st.isCollapsed,
       isVisible: st.isVisible !== false,
+      isContentCollapsed: !!st.isContentCollapsed,
     });
   }
 }
@@ -65,7 +67,7 @@ export function restoreNodeStatesFrom(
 export function cloneViewStateLocked(viewState: ViewState): ViewState {
   const map = new Map<string, NodeViewState>();
   for (const [k, v] of viewState.nodeStates.entries()) {
-    map.set(k, { isCollapsed: !!v.isCollapsed, isVisible: v.isVisible !== false });
+    map.set(k, { isCollapsed: !!v.isCollapsed, isVisible: v.isVisible !== false, isContentCollapsed: !!v.isContentCollapsed });
   }
   return { nodeStates: map, isLocked: true };
 }

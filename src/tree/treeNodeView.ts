@@ -282,6 +282,11 @@ export class TreeNodeView {
             state.isCollapsed = uiState.contentCollapsed;
         } else {
             state.isCollapsed = true;
+            // Merged folder-note row: its inline results are not "tree", so they
+            // stay governed by "Collapse results", never hidden by Collapse Tree.
+            if (this.folderNoteChild !== null) {
+                state.isContentCollapsed = uiState.contentCollapsed;
+            }
         }
 
         this.treeNodeViewChildren.forEach(child => child.listToggleOn());
@@ -301,6 +306,10 @@ export class TreeNodeView {
             state.isCollapsed = uiState.contentCollapsed;
         } else {
             state.isCollapsed = false;
+            // Mirror listToggleOn: a merged row's results follow "Collapse results".
+            if (this.folderNoteChild !== null) {
+                state.isContentCollapsed = uiState.contentCollapsed;
+            }
         }
 
         this.treeNodeViewChildren.forEach(child => child.listToggleOff());
@@ -317,8 +326,12 @@ export class TreeNodeView {
         const state = this.getOrCreateNodeViewState();
 
 
-        if (this.treeNode.isLeaf || this.folderNoteChild !== null) {
-            dbgTNV("ContentHiddenToggleOn", this.treeNode.title, "| isLeaf:", this.treeNode.isLeaf, "| folderNote:", !!this.folderNoteChild, "→ Collapsing");
+        if (this.folderNoteChild !== null) {
+            // Merged row: hide only the inline results, leave the subtree alone.
+            dbgTNV("ContentHiddenToggleOn", this.treeNode.title, "| folderNote → Collapsing results only");
+            state.isContentCollapsed = true;
+        } else if (this.treeNode.isLeaf) {
+            dbgTNV("ContentHiddenToggleOn", this.treeNode.title, "| isLeaf → Collapsing");
             state.isCollapsed = true;
         } else {
             dbgTNV("ContentHiddenToggleOn", this.treeNode.title, "| isLeaf:", false, "→ Skipping collapse");
@@ -337,7 +350,11 @@ export class TreeNodeView {
         const state = this.getOrCreateNodeViewState();
 
 
-        if (this.treeNode.isLeaf || this.folderNoteChild !== null) {
+        if (this.folderNoteChild !== null) {
+            // Merged row: reveal the inline results; subtree state is untouched.
+            state.isContentCollapsed = false;
+            dbgTNV("ContentHiddenToggleOff → Revealing results of:", this.treeNode.title);
+        } else if (this.treeNode.isLeaf) {
             state.isCollapsed = false;
             dbgTNV("ContentHiddenToggleOff → Expanding node:", this.treeNode.title);
         }
@@ -352,7 +369,19 @@ export class TreeNodeView {
     toggle() {
         if (this.viewState?.isLocked) return; // strict lock: no expand/collapse
         const state = this.getOrCreateNodeViewState();
-        state.isCollapsed = !state.isCollapsed;
+
+        if (this.folderNoteChild !== null) {
+            // Merged row has two sections (results + subtree). A manual triangle
+            // click collapses the whole row when anything is showing, and expands
+            // everything otherwise, keeping both flags in sync.
+            const anyVisible =
+                (!!this.childrenContainer && !state.isCollapsed) ||
+                (!!this.matchBlock && !state.isContentCollapsed);
+            state.isCollapsed = anyVisible;
+            state.isContentCollapsed = anyVisible;
+        } else {
+            state.isCollapsed = !state.isCollapsed;
+        }
 
         this.applyNodeViewStateToUI();
     }
@@ -362,7 +391,6 @@ export class TreeNodeView {
         dbgTNV("applyNodeViewStateToUI path=", this.treeNode?.path);
         const state = this.getOrCreateNodeViewState();
         dbgTNV("applyNodeViewStateToUI current state=", state);
-        let isCollapsed = state.isCollapsed;
 
         // NEW: if the node is not visible, hide it and skip collapse logic
         if (!state.isVisible) {
@@ -372,15 +400,29 @@ export class TreeNodeView {
             this.treeItem.style.display = "";
         }
 
+        // A merged folder-note row shows BOTH a subtree (childrenContainer) and
+        // the folder note's inline results (matchBlock). Drive the subtree from
+        // `isCollapsed` and the results from `isContentCollapsed` so "Collapse
+        // Tree" and "Collapse Results" act independently (issue #167). For all
+        // other rows (plain leaves/folders) a single flag governs everything.
+        const isMerged = this.folderNoteChild !== null;
+        const childrenCollapsed = state.isCollapsed;
+        const contentCollapsed = isMerged ? !!state.isContentCollapsed : state.isCollapsed;
+
+        // Row appears collapsed only when everything beneath it is hidden.
+        const visualCollapsed = isMerged
+            ? (this.childrenContainer ? childrenCollapsed : true) && contentCollapsed
+            : state.isCollapsed;
+
         // Apply visual state
-        this.treeItemSelf.toggleClass("is-collapsed", isCollapsed);
-        this.treeItemIcon.toggleClass("is-collapsed", isCollapsed);
+        this.treeItemSelf.toggleClass("is-collapsed", visualCollapsed);
+        this.treeItemIcon.toggleClass("is-collapsed", visualCollapsed);
 
         if (this.childrenContainer) {
-            this.childrenContainer.style.setProperty("display", isCollapsed ? "none" : "block");
+            this.childrenContainer.style.setProperty("display", childrenCollapsed ? "none" : "block");
         }
         if (this.matchBlock) {
-            this.matchBlock.style.setProperty("display", isCollapsed ? "none" : "block");
+            this.matchBlock.style.setProperty("display", contentCollapsed ? "none" : "block");
         }
 
         // Propagate to children

@@ -96,6 +96,23 @@ describe("TreeNodeView.listToggleOn (issue #145)", () => {
         expect(viewState.nodeStates.get("Folder/note.md")?.isCollapsed).toBe(false);
     });
 
+    it("keeps a merged folder-note row's results visible (issue #167)", () => {
+        // Collapse Tree on a folder note must collapse its subtree but leave the
+        // folder note's own inline results following "Collapse results" (off here).
+        uiState.contentCollapsed = false;
+        const folderNoteChild = makeNode("Projects/Projects.md", true);
+        const folderNode = makeNode("Projects", false, [folderNoteChild]);
+        const viewState = makeViewState();
+        const view = makeView(folderNode, viewState);
+        (view as any).folderNoteChild = folderNoteChild;
+
+        view.listToggleOn();
+
+        const state = viewState.nodeStates.get("Projects");
+        expect(state?.isCollapsed).toBe(true);        // subtree collapses
+        expect(state?.isContentCollapsed).toBe(false); // results stay visible
+    });
+
     it("stays symmetric with listToggleOff", () => {
         uiState.contentCollapsed = false;
         const leaf = makeNode("Folder/note.md", true);
@@ -124,7 +141,7 @@ describe("TreeNodeView.contentHiddenToggleOn", () => {
         expect(viewState.nodeStates.get("Notes/note.md")?.isCollapsed).toBe(true);
     });
 
-    it("collapses a folder note node (non-leaf whose references are shown inline)", () => {
+    it("collapses a folder note node's results without collapsing its subtree", () => {
         const folderNoteChild = makeNode("Projects/Projects.md", true);
         const folderNode = makeNode("Projects", false, [folderNoteChild]);
         const viewState = makeViewState();
@@ -135,7 +152,9 @@ describe("TreeNodeView.contentHiddenToggleOn", () => {
 
         (view as any).contentHiddenToggleOn();
 
-        expect(viewState.nodeStates.get("Projects")?.isCollapsed).toBe(true);
+        // Results hide (isContentCollapsed); the subtree (isCollapsed) is untouched.
+        expect(viewState.nodeStates.get("Projects")?.isContentCollapsed).toBe(true);
+        expect(viewState.nodeStates.get("Projects")?.isCollapsed).toBeFalsy();
     });
 });
 
@@ -151,18 +170,18 @@ describe("TreeNodeView.contentHiddenToggleOff", () => {
         expect(viewState.nodeStates.get("Notes/note.md")?.isCollapsed).toBe(false);
     });
 
-    it("expands a folder note node", () => {
+    it("expands a folder note node's results", () => {
         const folderNoteChild = makeNode("Projects/Projects.md", true);
         const folderNode = makeNode("Projects", false, [folderNoteChild]);
         const viewState = makeViewState();
-        viewState.nodeStates.set("Projects", { isCollapsed: true, isVisible: true });
+        viewState.nodeStates.set("Projects", { isCollapsed: false, isVisible: true, isContentCollapsed: true });
         const view = makeView(folderNode, viewState);
 
         (view as any).folderNoteChild = folderNoteChild;
 
         (view as any).contentHiddenToggleOff();
 
-        expect(viewState.nodeStates.get("Projects")?.isCollapsed).toBe(false);
+        expect(viewState.nodeStates.get("Projects")?.isContentCollapsed).toBe(false);
     });
 
     it("expands a leaf even when its parent folder is collapsed (issue #147)", () => {

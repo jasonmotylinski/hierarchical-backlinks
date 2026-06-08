@@ -16,6 +16,7 @@ import {
     snapshotNodeStates,
     restoreNodeStatesFrom,
     captureSnapshotFrom,
+    type NodeStateSnapshot,
 } from "./state";
 import { registerViewEvents } from "./events";
 import { installHistoryHotkeys } from "./focusSupport";
@@ -38,7 +39,7 @@ export class HierarchicalBacklinksView extends ItemView {
     private isFlattened: boolean = false;
     private flattenedHierarchy: TreeNode[] = [];
     private isSortRestore: boolean = false;
-    private sortSnapshot?: Map<string, { isCollapsed: boolean; isVisible: boolean }>;
+    private sortSnapshot?: NodeStateSnapshot;
     private searchSeq: number = 0;
     private debugHooksInstalled: boolean = false;
     private lastEditorLeaf: WorkspaceLeaf | null = null;

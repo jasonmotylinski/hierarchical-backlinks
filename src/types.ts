@@ -31,7 +31,11 @@ export interface TreeNodeData {
 export interface NodeViewState {
   isCollapsed: boolean;
   isVisible: boolean;
-  
+  // Separate collapse state for a merged folder-note row's *inline results*
+  // (the folder note's own backlinks). A merged row shows both results and a
+  // subtree, so `isCollapsed` alone (which drives the subtree) can't let
+  // "Collapse Tree" and "Collapse Results" act independently (issue #167).
+  isContentCollapsed?: boolean;
 }
 export interface ViewState {
   nodeStates: Map<NodeId, NodeViewState>;
