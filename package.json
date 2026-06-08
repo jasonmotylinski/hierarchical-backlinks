@@ -18,7 +18,7 @@
 		"builtin-modules": "5.2.0",
 		"esbuild": "0.28.0",
 		"jsdom": "^29.1.1",
-		"obsidian": "latest",
+		"obsidian": "^1.5.7-1",
 		"tslib": "2.8.1",
 		"typescript": "6.0.3",
 		"vitest": "^4.0.4"
