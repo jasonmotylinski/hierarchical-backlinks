@@ -33,6 +33,9 @@ beforeAll(() => {
     proto.toggleClass = function (cls: string, on: boolean) {
         this.classList.toggle(cls, on);
     };
+    proto.addClass = function (cls: string) {
+        this.classList.add(cls);
+    };
 });
 
 const settings: HierarchicalBacklinksSettings = {
@@ -42,6 +45,7 @@ const settings: HierarchicalBacklinksSettings = {
     frontmatterTitleProperty: "",
     hideFolderNote: true,
     folderNoteIndexName: "",
+    superchargedLinks: false,
 };
 
 function makeViewState(): ViewState {
@@ -141,6 +145,31 @@ describe("TreeNodeView row clicks (issue #155)", () => {
         view.listToggleOn();
 
         expect(matchBlock.style.display).not.toBe("none");
+    });
+
+    it("decorates rows with Supercharged Links attributes when enabled (issue #3)", () => {
+        const slSettings: HierarchicalBacklinksSettings = { ...settings, superchargedLinks: true };
+        const leaf = new TreeNode("Notes/note.md", "", [], [], null, true);
+        leaf.setFrontmatter({ status: "done" });
+        leaf.tags = ["todo"];
+
+        const parent = document.createElement("div");
+        const view = new TreeNodeView(makeApp(vi.fn()), parent as HTMLDivElement, leaf, makeViewState(), slSettings);
+        view.render();
+
+        const inner = parent.querySelector(".tree-item-inner") as HTMLElement;
+        expect(inner.getAttribute("data-link-status")).toBe("done");
+        expect(inner.getAttribute("data-link-tags")).toBe("todo");
+        expect(inner.classList.contains("data-link-icon")).toBe(true);
+    });
+
+    it("does not decorate rows when Supercharged Links is disabled", () => {
+        const leaf = new TreeNode("Notes/note.md", "", [], [], null, true);
+        leaf.setFrontmatter({ status: "done" });
+
+        const parent = renderInto(makeApp(vi.fn()), leaf, makeViewState());
+        const inner = parent.querySelector(".tree-item-inner") as HTMLElement;
+        expect(inner.hasAttribute("data-link-status")).toBe(false);
     });
 
     it("toggles (not navigates) on row click of a plain folder", () => {

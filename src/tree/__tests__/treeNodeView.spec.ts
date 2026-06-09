@@ -16,6 +16,7 @@ const defaultSettings: HierarchicalBacklinksSettings = {
     frontmatterTitleProperty: "",
     hideFolderNote: true,
     folderNoteIndexName: "",
+    superchargedLinks: false,
 };
 
 function makeViewState(): ViewState {

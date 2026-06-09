@@ -6,6 +6,7 @@ import { TreeNode } from "./treeNode";
 import { uiState } from "../ui/uiState";
 import { getOrCreateNodeViewState } from "../view/state";
 import { getFolderNoteChild, getIndexNoteChild } from "./folderNote";
+import { applySuperchargedAttributes } from "./superchargedAttributes";
 
 export class TreeNodeView {
     private app: App;
@@ -159,6 +160,13 @@ export class TreeNodeView {
         }
 
         const treeItemInner = parent.createDiv({ cls: "tree-item-inner", text: name });
+
+        // Supercharged Links interop: decorate the row using the underlying
+        // note's metadata. Merged folder-note rows carry their file in
+        // `folderNoteChild`; all other rows use the node itself (issue #3).
+        if (this.settings.superchargedLinks) {
+            applySuperchargedAttributes(treeItemInner, folderNoteChild ?? treeNode);
+        }
 
         treeItemInner.addEventListener(
             "mousedown",

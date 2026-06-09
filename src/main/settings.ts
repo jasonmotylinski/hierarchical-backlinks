@@ -1,7 +1,7 @@
 import { PluginSettingTab, Setting } from "obsidian";
 import type HierarchicalBacklinksPlugin from "./main";
 import { HierarchicalBacklinksSettings } from "../types";
-import { VIEW_TYPE } from "../view/view";
+import { VIEW_TYPE, HierarchicalBacklinksView } from "../view/view";
 
 export const DEFAULT_SETTINGS: HierarchicalBacklinksSettings = {
   toggleLeafNodes: false,
@@ -10,6 +10,7 @@ export const DEFAULT_SETTINGS: HierarchicalBacklinksSettings = {
   frontmatterTitleProperty: "title",
   hideFolderNote: false,
   folderNoteIndexName: "",
+  superchargedLinks: false,
 };
 
 export class HierarchicalBacklinksSettingTab extends PluginSettingTab {
@@ -79,6 +80,24 @@ export class HierarchicalBacklinksSettingTab extends PluginSettingTab {
           }),
       );
     propertyNameSetting.settingEl.toggle(this.plugin.settings.useFrontmatterTitle);
+
+    new Setting(containerEl).setName("Styling").setHeading();
+
+    new Setting(containerEl)
+      .setName("Supercharged Links attributes")
+      .setDesc("Add Supercharged Links-style data-link-* attributes (from each note's frontmatter and tags) to backlink rows, so your existing Supercharged Links CSS snippets color them. No dependency on the Supercharged Links plugin.")
+      .addToggle(toggle =>
+        toggle
+          .setValue(this.plugin.settings.superchargedLinks)
+          .onChange(async (value) => {
+            this.plugin.settings.superchargedLinks = value;
+            await this.plugin.saveSettings();
+            // Re-render open views so the attributes are added/removed now.
+            this.plugin.app.workspace.getLeavesOfType(VIEW_TYPE).forEach(leaf => {
+              void (leaf.view as HierarchicalBacklinksView).initialize();
+            });
+          }),
+      );
 
     new Setting(containerEl).setName("Folder notes").setHeading();
 

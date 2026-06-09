@@ -172,6 +172,7 @@ describe("File.getBacklinksHierarchy - Issue #144: indexName folder notes", () =
     frontmatterTitleProperty: "title",
     hideFolderNote: true,
     folderNoteIndexName: "Overview",
+    superchargedLinks: false,
   };
 
   beforeEach(() => {

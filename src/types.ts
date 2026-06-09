@@ -9,6 +9,10 @@ export interface HierarchicalBacklinksSettings {
   frontmatterTitleProperty: string;
   hideFolderNote: boolean;
   folderNoteIndexName: string;
+  // When true, decorate each backlink row with Supercharged Links-style
+  // `data-link-*` attributes derived from the target note's frontmatter and
+  // tags, so existing Supercharged Links CSS snippets style the rows (issue #3).
+  superchargedLinks: boolean;
 }
 
 export type NodeId = string; // Node path used as unique identifier
