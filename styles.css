@@ -10,6 +10,11 @@ If your plugin does not need CSS, delete this file.
     padding: 0px;
 }
 
+/* Remove underline from tree item text (issue #171) */
+.workspace-leaf-content[data-type='hierarchical-backlinks'] .tree-item-inner {
+    text-decoration: none;
+}
+
 .workspace-leaf-content[data-type='hierarchical-backlinks'] .view-content .backlink-item {
     padding-left: 24px;
 }

@@ -18,3 +18,4 @@ Each ADR follows this structure:
 | ADR | Issue | Title | Status |
 |-----|-------|-------|--------|
 | [ADR-153](ADR-153.md) | [#153](https://github.com/jasonmotylinski/hierarchical-backlinks/issues/153) | Granular Hierarchy Navigation Control | Accepted |
+| [ADR-171](ADR-171.md) | [#171](https://github.com/jasonmotylinski/hierarchical-backlinks/issues/171) | Remove underline from tree item text | Accepted |
