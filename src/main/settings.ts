@@ -1,6 +1,6 @@
 import { PluginSettingTab, Setting } from "obsidian";
 import type HierarchicalBacklinksPlugin from "./main";
-import { HierarchicalBacklinksSettings } from "../types";
+import { HierarchicalBacklinksSettings, FOLDER_NOTE_OPEN_KEY_OPTIONS } from "../types";
 import { VIEW_TYPE, HierarchicalBacklinksView } from "../view/view";
 
 export const DEFAULT_SETTINGS: HierarchicalBacklinksSettings = {
@@ -11,6 +11,8 @@ export const DEFAULT_SETTINGS: HierarchicalBacklinksSettings = {
   hideFolderNote: false,
   folderNoteIndexName: "",
   superchargedLinks: false,
+  openNoteOnRowClick: true,
+  folderNoteOpenKey: "alt",
 };
 
 export class HierarchicalBacklinksSettingTab extends PluginSettingTab {
@@ -127,6 +129,33 @@ export class HierarchicalBacklinksSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           }),
       );
+
+    const openNoteOnRowClickSetting = new Setting(containerEl)
+      .setName("Open note on row click")
+      .setDesc("When enabled, clicking a folder note row opens the note. When disabled, clicking toggles expand/collapse and a modifier key opens the note.")
+      .addToggle(toggle =>
+        toggle
+          .setValue(this.plugin.settings.openNoteOnRowClick)
+          .onChange(async (value) => {
+            this.plugin.settings.openNoteOnRowClick = value;
+            await this.plugin.saveSettings();
+            folderNoteOpenKeySetting.settingEl.toggle(!value);
+          }),
+      );
+
+    const folderNoteOpenKeySetting = new Setting(containerEl)
+      .setName("Key for opening folder note")
+      .setDesc("Modifier key to open the folder note when 'Open note on row click' is disabled.")
+      .addDropdown(dropdown =>
+        dropdown
+          .addOptions(Object.fromEntries(FOLDER_NOTE_OPEN_KEY_OPTIONS.map(k => [k, k.charAt(0).toUpperCase() + k.slice(1)])))
+          .setValue(this.plugin.settings.folderNoteOpenKey)
+          .onChange(async (value) => {
+            this.plugin.settings.folderNoteOpenKey = value;
+            await this.plugin.saveSettings();
+          }),
+      );
+    folderNoteOpenKeySetting.settingEl.toggle(!this.plugin.settings.openNoteOnRowClick);
   }
 
   get toggleLeafNodes(): boolean {

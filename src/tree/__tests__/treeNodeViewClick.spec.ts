@@ -46,6 +46,8 @@ const settings: HierarchicalBacklinksSettings = {
     hideFolderNote: true,
     folderNoteIndexName: "",
     superchargedLinks: false,
+    openNoteOnRowClick: true,
+    folderNoteOpenKey: "alt",
 };
 
 function makeViewState(): ViewState {
@@ -54,6 +56,10 @@ function makeViewState(): ViewState {
 
 function makeNode(path: string, isLeaf: boolean, children: TreeNode[] = []): TreeNode {
     return new TreeNode(path, "", [], children, null, isLeaf);
+}
+
+function makeSettings(overrides: Partial<HierarchicalBacklinksSettings> = {}): HierarchicalBacklinksSettings {
+    return { ...settings, ...overrides };
 }
 
 function makeApp(openLinkText: ReturnType<typeof vi.fn>): App {
@@ -76,9 +82,9 @@ function makeApp(openLinkText: ReturnType<typeof vi.fn>): App {
     } as unknown as App;
 }
 
-function renderInto(app: App, node: TreeNode, viewState: ViewState): HTMLElement {
+function renderInto(app: App, node: TreeNode, viewState: ViewState, s: HierarchicalBacklinksSettings = settings): HTMLElement {
     const parent = document.createElement("div");
-    const view = new TreeNodeView(app, parent as HTMLDivElement, node, viewState, settings);
+    const view = new TreeNodeView(app, parent as HTMLDivElement, node, viewState, s);
     view.render();
     return parent;
 }
@@ -185,5 +191,149 @@ describe("TreeNodeView row clicks (issue #155)", () => {
 
         expect(openLinkText).not.toHaveBeenCalled();
         expect(viewState.nodeStates.get("Folder")?.isCollapsed).toBe(true);
+    });
+});
+
+/**
+ * Issue #153: Granular Hierarchy Navigation Control
+ *
+ * When openNoteOnRowClick is false, clicking a merged folder-note row should
+ * toggle expand/collapse instead of navigating. Modifier+click should navigate.
+ */
+describe("TreeNodeView folder note click mode (issue #153)", () => {
+    function clickWithModifier(el: HTMLElement, modifier: "alt" | "ctrl" | "shift" | "meta") {
+        const event = new MouseEvent("click", {
+            bubbles: true,
+            cancelable: true,
+            [`${modifier}Key`]: true,
+        } as MouseEventInit);
+        el.dispatchEvent(event);
+    }
+
+    it("toggles on folder note row click when openNoteOnRowClick is false", () => {
+        const openLinkText = vi.fn();
+        const s = makeSettings({ openNoteOnRowClick: false });
+        const folderNote = makeNode("Projects/Projects.md", true);
+        const folder = makeNode("Projects", false, [folderNote]);
+        const viewState = makeViewState();
+        const parent = renderInto(makeApp(openLinkText), folder, viewState, s);
+
+        const row = parent.querySelector(".tree-item-self") as HTMLElement;
+        row.click();
+
+        expect(openLinkText).not.toHaveBeenCalled();
+        expect(viewState.nodeStates.get("Projects")?.isCollapsed).toBe(true);
+    });
+
+    it("navigates on modifier+click of folder note row when openNoteOnRowClick is false", () => {
+        const openLinkText = vi.fn();
+        const s = makeSettings({ openNoteOnRowClick: false, folderNoteOpenKey: "alt" });
+        const folderNote = makeNode("Projects/Projects.md", true);
+        const folder = makeNode("Projects", false, [folderNote]);
+        const parent = renderInto(makeApp(openLinkText), folder, makeViewState(), s);
+
+        const row = parent.querySelector(".tree-item-self") as HTMLElement;
+        clickWithModifier(row, "alt");
+
+        expect(openLinkText).toHaveBeenCalledTimes(1);
+        expect(openLinkText).toHaveBeenCalledWith("Projects", "Projects/Projects.md");
+    });
+
+    it("navigates on ctrl when folderNoteOpenKey is ctrl", () => {
+        const openLinkText = vi.fn();
+        const s = makeSettings({ openNoteOnRowClick: false, folderNoteOpenKey: "ctrl" });
+        const folderNote = makeNode("Projects/Projects.md", true);
+        const folder = makeNode("Projects", false, [folderNote]);
+        const parent = renderInto(makeApp(openLinkText), folder, makeViewState(), s);
+
+        const row = parent.querySelector(".tree-item-self") as HTMLElement;
+        clickWithModifier(row, "ctrl");
+
+        expect(openLinkText).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not navigate when wrong modifier is held", () => {
+        const openLinkText = vi.fn();
+        const s = makeSettings({ openNoteOnRowClick: false, folderNoteOpenKey: "alt" });
+        const folderNote = makeNode("Projects/Projects.md", true);
+        const folder = makeNode("Projects", false, [folderNote]);
+        const viewState = makeViewState();
+        const parent = renderInto(makeApp(openLinkText), folder, viewState, s);
+
+        const row = parent.querySelector(".tree-item-self") as HTMLElement;
+        clickWithModifier(row, "shift");
+
+        expect(openLinkText).not.toHaveBeenCalled();
+        expect(viewState.nodeStates.get("Projects")?.isCollapsed).toBe(true);
+    });
+
+    it("toggles on folder note text click when openNoteOnRowClick is false", () => {
+        const openLinkText = vi.fn();
+        const s = makeSettings({ openNoteOnRowClick: false });
+        const folderNote = makeNode("Projects/Projects.md", true);
+        const folder = makeNode("Projects", false, [folderNote]);
+        const viewState = makeViewState();
+        const parent = renderInto(makeApp(openLinkText), folder, viewState, s);
+
+        const inner = parent.querySelector(".tree-item-inner") as HTMLElement;
+        inner.click();
+
+        expect(openLinkText).not.toHaveBeenCalled();
+        expect(viewState.nodeStates.get("Projects")?.isCollapsed).toBe(true);
+    });
+
+    it("navigates on modifier+click of folder note text when openNoteOnRowClick is false", () => {
+        const openLinkText = vi.fn();
+        const s = makeSettings({ openNoteOnRowClick: false, folderNoteOpenKey: "alt" });
+        const folderNote = makeNode("Projects/Projects.md", true);
+        const folder = makeNode("Projects", false, [folderNote]);
+        const parent = renderInto(makeApp(openLinkText), folder, makeViewState(), s);
+
+        const inner = parent.querySelector(".tree-item-inner") as HTMLElement;
+        clickWithModifier(inner, "alt");
+
+        expect(openLinkText).toHaveBeenCalledTimes(1);
+        expect(openLinkText).toHaveBeenCalledWith("Projects", "Projects/Projects.md");
+    });
+
+    it("navigates on row click when openNoteOnRowClick is true (default)", () => {
+        const openLinkText = vi.fn();
+        const s = makeSettings({ openNoteOnRowClick: true });
+        const folderNote = makeNode("Projects/Projects.md", true);
+        const folder = makeNode("Projects", false, [folderNote]);
+        const parent = renderInto(makeApp(openLinkText), folder, makeViewState(), s);
+
+        const row = parent.querySelector(".tree-item-self") as HTMLElement;
+        row.click();
+
+        expect(openLinkText).toHaveBeenCalledTimes(1);
+        expect(openLinkText).toHaveBeenCalledWith("Projects", "Projects/Projects.md");
+    });
+
+    it("does not affect plain folder rows (always toggles)", () => {
+        const openLinkText = vi.fn();
+        const s = makeSettings({ openNoteOnRowClick: false });
+        const leaf = makeNode("Folder/a.md", true);
+        const folder = makeNode("Folder", false, [leaf]);
+        const viewState = makeViewState();
+        const parent = renderInto(makeApp(openLinkText), folder, viewState, s);
+
+        const row = parent.querySelector(".tree-item-self") as HTMLElement;
+        row.click();
+
+        expect(openLinkText).not.toHaveBeenCalled();
+        expect(viewState.nodeStates.get("Folder")?.isCollapsed).toBe(true);
+    });
+
+    it("does not affect leaf row clicks (always navigates)", () => {
+        const openLinkText = vi.fn();
+        const s = makeSettings({ openNoteOnRowClick: false });
+        const parent = renderInto(makeApp(openLinkText), makeNode("Notes/note.md", true), makeViewState(), s);
+
+        const row = parent.querySelector(".tree-item-self") as HTMLElement;
+        row.click();
+
+        expect(openLinkText).toHaveBeenCalledTimes(1);
+        expect(openLinkText).toHaveBeenCalledWith("note", "Notes/note.md");
     });
 });

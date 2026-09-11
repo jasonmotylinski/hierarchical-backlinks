@@ -17,6 +17,8 @@ const defaultSettings: HierarchicalBacklinksSettings = {
     hideFolderNote: true,
     folderNoteIndexName: "",
     superchargedLinks: false,
+    openNoteOnRowClick: true,
+    folderNoteOpenKey: "alt",
 };
 
 function makeViewState(): ViewState {

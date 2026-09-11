@@ -13,7 +13,16 @@ export interface HierarchicalBacklinksSettings {
   // `data-link-*` attributes derived from the target note's frontmatter and
   // tags, so existing Supercharged Links CSS snippets style the rows (issue #3).
   superchargedLinks: boolean;
+  // When true (default), clicking a merged folder-note row opens the note.
+  // When false, clicking toggles expand/collapse; modifier key opens the note.
+  // Only applies when hideFolderNote is enabled (issue #153).
+  openNoteOnRowClick: boolean;
+  // Modifier key required to open a folder note when openNoteOnRowClick is
+  // false. One of "alt", "ctrl", "shift", "meta" (issue #153).
+  folderNoteOpenKey: string;
 }
+
+export const FOLDER_NOTE_OPEN_KEY_OPTIONS = ["alt", "ctrl", "shift", "meta"] as const;
 
 export type NodeId = string; // Node path used as unique identifier
 

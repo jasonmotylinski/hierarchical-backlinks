@@ -173,6 +173,8 @@ describe("File.getBacklinksHierarchy - Issue #144: indexName folder notes", () =
     hideFolderNote: true,
     folderNoteIndexName: "Overview",
     superchargedLinks: false,
+    openNoteOnRowClick: true,
+    folderNoteOpenKey: "alt",
   };
 
   beforeEach(() => {

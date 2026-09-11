@@ -98,7 +98,11 @@ export class TreeNodeView {
             }
 
             if (this.folderNoteChild) {
-                this.navigateTo(this.folderNoteChild.path);
+                if (!this.settings.openNoteOnRowClick && !this.hasModifierKey(e)) {
+                    this.toggle();
+                } else {
+                    this.navigateTo(this.folderNoteChild.path);
+                }
             } else if (this.treeNode.isLeaf) {
                 // Leaf rows (e.g. every row in flatten mode) navigate on a
                 // whole-row click, matching merged folder-note rows in
@@ -186,11 +190,15 @@ export class TreeNodeView {
         });
         
         // Attach click handler to navigate or toggle based on the node type and configuration
-        treeItemInner.addEventListener("click", (e) => {
+        treeItemInner.addEventListener("click", (e: MouseEvent) => {
             e.stopPropagation();
             const pathToNavigate = navigatePath ?? treeNode.path;
-            dbgTNV("treeItemInner clicked: navigating to", pathToNavigate);
-            this.navigateTo(pathToNavigate);
+            if (navigatePath && !this.settings.openNoteOnRowClick && !this.hasModifierKey(e)) {
+                this.toggle();
+            } else {
+                dbgTNV("treeItemInner clicked: navigating to", pathToNavigate);
+                this.navigateTo(pathToNavigate);
+            }
         });
         
         // For leaf nodes, ensure the cursor indicates clickability
@@ -218,6 +226,16 @@ export class TreeNodeView {
 
     isNodeClickable(): boolean {
         return true;
+    }
+
+    private hasModifierKey(e: MouseEvent): boolean {
+        switch (this.settings.folderNoteOpenKey) {
+            case "alt": return e.altKey;
+            case "ctrl": return e.ctrlKey;
+            case "shift": return e.shiftKey;
+            case "meta": return e.metaKey;
+            default: return e.altKey;
+        }
     }
 
     navigateTo(path: string) {
