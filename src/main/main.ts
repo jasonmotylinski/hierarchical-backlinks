@@ -27,10 +27,12 @@ export default class HierarchicalBacklinksPlugin extends Plugin {
         // Load global UI runtime state (if present)
         uiState.load(data.ui);
 
-        // First-run fallback: if there is no persisted UI yet,
-        // honor the "Hide Content by Default" setting for contentCollapsed.
-        if (!data.ui) {
-            uiState.contentCollapsed = this.settings.toggleLeafNodes;
+        // Always honor the "Hide Context by Default" setting on launch.
+        // The setting description says "Next time the plugin is loaded, context
+        // will be hidden by default" — so when toggleLeafNodes is enabled we
+        // force contentCollapsed to true regardless of any persisted UI state.
+        if (this.settings.toggleLeafNodes) {
+            uiState.contentCollapsed = true;
         }
 
         this.addSettingTab(new HierarchicalBacklinksSettingTab(this));
