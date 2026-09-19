@@ -2,6 +2,7 @@ import { PluginSettingTab, Setting } from "obsidian";
 import type HierarchicalBacklinksPlugin from "./main";
 import { HierarchicalBacklinksSettings, FOLDER_NOTE_OPEN_KEY_OPTIONS } from "../types";
 import { VIEW_TYPE, HierarchicalBacklinksView } from "../view/view";
+import { uiState } from "../ui/uiState";
 
 export const DEFAULT_SETTINGS: HierarchicalBacklinksSettings = {
   toggleLeafNodes: false,
@@ -30,13 +31,18 @@ export class HierarchicalBacklinksSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Hide Context by Default")
-      .setDesc("Next time the plugin is loaded, context will be hidden by default.")
+      .setDesc("Hide backlink context by default. Applies immediately to open panels and on future launches.")
       .addToggle(toggle =>
         toggle
           .setValue(this.plugin.settings.toggleLeafNodes)
           .onChange(async (value) => {
             this.plugin.settings.toggleLeafNodes = value;
+            uiState.contentCollapsed = value;
             await this.plugin.saveSettings();
+            // Apply the change live to all open backlink views
+            this.plugin.app.workspace.getLeavesOfType(VIEW_TYPE).forEach(leaf => {
+              void (leaf.view as HierarchicalBacklinksView).actionContent?.(value);
+            });
           }),
       );
 
