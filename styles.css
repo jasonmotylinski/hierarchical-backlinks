@@ -10,9 +10,13 @@ If your plugin does not need CSS, delete this file.
     padding: 0px;
 }
 
-/* Remove underline from tree item text (issue #171) */
+/* Remove underline from tree item text (issues #171, #188) */
+/* Target both .tree-item-self (parent) and .tree-item-inner (child) because
+text-decoration propagates from parent to inline descendants and setting it
+on the child alone does not suppress the parent's underline. */
+.workspace-leaf-content[data-type='hierarchical-backlinks'] .tree-item-self,
 .workspace-leaf-content[data-type='hierarchical-backlinks'] .tree-item-inner {
-    text-decoration: none;
+    text-decoration: none !important;
 }
 
 .workspace-leaf-content[data-type='hierarchical-backlinks'] .view-content .backlink-item {
