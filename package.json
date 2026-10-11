@@ -13,14 +13,14 @@
 	"license": "MIT",
 	"devDependencies": {
 		"@types/node": "^26.1.1",
-		"@typescript-eslint/eslint-plugin": "8.64.0",
-		"@typescript-eslint/parser": "8.64.0",
-		"builtin-modules": "5.2.0",
+		"@typescript-eslint/eslint-plugin": "^8.70.0",
+		"@typescript-eslint/parser": "^8.70.0",
+		"builtin-modules": "^5.3.0",
 		"esbuild": "0.28.2",
 		"jsdom": "^29.1.1",
 		"obsidian": "^1.5.7-1",
 		"tslib": "2.8.1",
 		"typescript": "7.0.2",
-		"vitest": "^4.0.4"
+		"vitest": "^4.1.11"
 	}
 }
